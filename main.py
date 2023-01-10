@@ -498,18 +498,6 @@ def mainwindow():
     gpuz=ttk.Button(utilitiessectionframe,image=gpuzimage,text="GPU-Z",width=10,compound=LEFT,command=lambda: [intcheck(),install(gpuzurl,gpuzpath,gpuzfile,"gpuz")])
     gpuz.grid(row=0,column=12)
 
-    ################passwordmanager###########
-    """
-    passwordmanagericon= PhotoImage(file = r"images\1.png")
-    passwordmanagerimage = passwordmanagericon.subsample(7,7)
-    """
-    passwordmanagerurl="https://github.com/VarunAdhityaGB/Password-Manager-GUI/releases/download/v.1.2/Password_Manager_v.1.2_Setup.exe"
-    passwordmanagerpath="downloads//passwordmanager.exe"
-    passwordmanagerfile="downloads\\passwordmanager.exe"
-    passwordmanagerutility=ttk.Button(utilitiessectionframe,text="Password Manager",width=15,compound=LEFT,command=lambda: [intcheck(),install(passwordmanagerurl,passwordmanagerpath,passwordmanagerfile,"passwordmanager")])
-    """passwordmanagerutility.grid(row=2,column=0)
-    """
-
     ##############################revouninstaller########################
     revouninstallericon= PhotoImage(file = r"images\Revouninstallerpro_icon.png")
     revouninstallerimage = revouninstallericon.subsample(12,12)
@@ -554,6 +542,15 @@ def mainwindow():
     everythingsearchfile="downloads\\everythingsearch.exe"
     everythingsearch=ttk.Button(utilitiessectionframe,image=everythingsearchimage,text="Everything search",width=14,compound=LEFT,command=lambda: [intcheck(),install(everythingsearchurl,everythingsearchpath,everythingsearchfile,"everythingsearch")])
     everythingsearch.grid(row=2,column=8)
+
+    ################passwordmanager###########
+    passwordmanagericon= PhotoImage(file = r"images\b8ac5e46-1a16-448b-9a12-bf597a95d173.png")
+    passwordmanagerimage = passwordmanagericon.subsample(14,14)
+    passwordmanagerurl="https://github.com/VarunAdhityaGB/Password-Manager-GUI/releases/download/v.1.2/Password_Manager_v.1.2_Setup.exe"
+    passwordmanagerpath="downloads//passwordmanager.exe"
+    passwordmanagerfile="downloads\\passwordmanager.exe"
+    passwordmanagerutility=ttk.Button(utilitiessectionframe,image=passwordmanagerimage,text="Password Manager",width=15,compound=LEFT,command=lambda: [intcheck(),install(passwordmanagerurl,passwordmanagerpath,passwordmanagerfile,"passwordmanager")])
+    passwordmanagerutility.grid(row=2,column=10)
 
     main.mainloop()
 
