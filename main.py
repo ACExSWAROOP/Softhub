@@ -7,6 +7,9 @@ import sv_ttk as sv
 import os 
 import requests
 
+class AppURLopener(request.FancyURLopener):
+    version = "Mozilla/5.0"
+
 def intcheck():
     def internet_stat(url="https://www.google.com/", timeout=3):
         try:
@@ -32,9 +35,10 @@ def intcheck():
 def install(url,path,file,appname):
     text="do you want to install "+appname+"?"
     x = messagebox.askyesno("do you want to install this application?",text )
-    if x == 1:
-        response = request.urlretrieve(url, path)
+    while x == 1:
+        response = request.urlretrieve(url,path)
         os.system(file)
+        break
 
 mainsplash = Tk()
 sv.set_theme("dark")
@@ -43,7 +47,7 @@ app_width = 1024
 app_height = 512
 screenwidth = mainsplash.winfo_screenwidth()
 screenheight = mainsplash.winfo_screenheight()
-
+mainsplash.attributes("-alpha", 0.95)
 x = (screenwidth / 2) - (app_width / 2)
 y = (screenheight / 2) - (app_height / 2)
 
@@ -63,7 +67,8 @@ def mainwindow():
     main.geometry(f'{app_width}x{app_height}')
     main.title("Softhub")
     main.tk.call('wm', 'iconphoto', main._w, ImageTk.PhotoImage(file='images\softhub.ico'))
-    main.resizable(0,0)
+    main.attributes("-alpha", 0.9)
+
     
     main_frame = Frame(main)
     main_frame.pack(fill=BOTH,expand=1)
@@ -77,10 +82,13 @@ def mainwindow():
     my_canvas.pack(side=LEFT,fill=BOTH,expand=1)
 
     # Add A Scrollbars to Canvas
+    x_scrollbar = ttk.Scrollbar(sec,orient=HORIZONTAL,command=my_canvas.xview)
+    x_scrollbar.pack(side=BOTTOM,fill=X)
     y_scrollbar = ttk.Scrollbar(main_frame,orient=VERTICAL,command=my_canvas.yview)
     y_scrollbar.pack(side=RIGHT,fill=Y)
 
     # Configure the canvas
+    my_canvas.configure(xscrollcommand=x_scrollbar.set)
     my_canvas.configure(yscrollcommand=y_scrollbar.set)
     my_canvas.bind("<Configure>",lambda e: my_canvas.config(scrollregion= my_canvas.bbox(ALL))) 
 
@@ -211,7 +219,7 @@ def mainwindow():
 
     discordicon= PhotoImage(file = r"images\636e0a6a49cf127bf92de1e2_icon_clyde_blurple_RGB.png")
     discordimage = discordicon.subsample(12,12)
-    discordurl="https://discord.com/api/downloads/distributions/app/installers/latest?channel=stable&platform=win&arch=x86"
+    discordurl="https://discord.com/api/downloads/distributions/app/installers/latest?channel=stable&platform=win&arch=x86" 
     discordpath="downloads//discord.exe"
     discordfile="downloads\\discord.exe"
     discord=ttk.Button(communicationsectionframe,image=discordimage,text="Discord",width=9,compound=LEFT,command=lambda: [intcheck(),install(discordurl,discordpath,discordfile,"discord")])
@@ -251,7 +259,7 @@ def mainwindow():
 
     signalicon= PhotoImage(file = r"images\4423638.png")
     signalimage = signalicon.subsample(12,12)
-    signalurl="https://updates.signal.org/desktop/signal-desktop-win-6.1.0.exe"
+    signalurl="https://updates.signal.org/desktop/signal-desktop-win-6.1.0.exe" 
     signalpath="downloads//signal.exe"
     signalfile="downloads\\signal.exe"
     signal=ttk.Button(communicationsectionframe,image=signalimage,text="Signal",width=10,compound=LEFT,command=lambda: [intcheck(),install(signalurl,signalpath,signalfile,"signal")])
@@ -373,7 +381,7 @@ def mainwindow():
 
     vscodiumicon= PhotoImage(file = r"images\i7zov9ca3ts71.png")
     vscodiumimage = vscodiumicon.subsample(24,24)
-    vscodiumurl="https://github.com/VSCodium/vscodium/releases"
+    vscodiumurl="https://github.com/VSCodium/vscodium/releases/download/1.74.2.22355/VSCodiumSetup-x64-1.74.2.22355.exe"
     vscodiumpath="downloads//vscodium.exe"
     vscodiumfile="downloads\\vscodium.exe"
     vscodium=ttk.Button(developmentsectionframe,image=vscodiumimage,text="VS Codium",width=10,compound=LEFT,command=lambda: [intcheck(),install(vscodiumurl,vscodiumpath,vscodiumfile,"vscodium")])
@@ -397,29 +405,105 @@ def mainwindow():
     utilitiessectionframe= Frame(second_frame)
     utilitiessectionframe.grid(row=7,column=0,pady=15,padx=15)
 
-    spacing=ttk.Label(utilitiessectionframe,text="     ")
+    spacing=ttk.Label(utilitiessectionframe,text="         ")
     spacing.grid(row=0,column=1)
-    spacing=ttk.Label(utilitiessectionframe,text="     ")
+    spacing=ttk.Label(utilitiessectionframe,text="         ")
     spacing.grid(row=0,column=3)
-    spacing=ttk.Label(utilitiessectionframe,text="     ")
+    spacing=ttk.Label(utilitiessectionframe,text="         ")
     spacing.grid(row=0,column=5)
-    spacing=ttk.Label(utilitiessectionframe,text="     ")
+    spacing=ttk.Label(utilitiessectionframe,text="         ")
     spacing.grid(row=0,column=7)
-    spacing=ttk.Label(utilitiessectionframe,text="     ")
+    spacing=ttk.Label(utilitiessectionframe,text="         ")
     spacing.grid(row=0,column=9)
+    spacing=ttk.Label(utilitiessectionframe,text="         ")
+    spacing.grid(row=0,column=11)
+    spacing=ttk.Label(utilitiessectionframe,text="         ")
+    spacing.grid(row=1,column=0)
+
+    ##############################hwinfo########################
+    hwinfoicon= PhotoImage(file = r"images\hwinfo-icon-512x512-8ybzko3v.png")
+    hwinfoimage = hwinfoicon.subsample(12,12)
+    hwinfourl="https://www.hwinfo.com/download/"
+    hwinfopath="downloads//hwinfo.exe"
+    hwinfofile="downloads\\hwinfoxe"
+    hwinfo=ttk.Button(utilitiessectionframe,image=hwinfoimage,text="HW Info",width=10,compound=LEFT,command=lambda: [intcheck(),install(hwinfourl,hwinfopath,hwinfofile,"hwinfo")])
+    hwinfo.grid(row=0,column=0)
+
+    ##############################coretemp########################
+    coretempicon= PhotoImage(file = r"images\34454443.png")
+    coretempimage = coretempicon.subsample(7,7)
+    coretempurl="https://www.alcpu.com/CoreTemp/Core-Temp-setup.exe"
+    coretemppath="downloads//coretemp.exe"
+    coretempfile="downloads\\coretemp.exe"
+    coretemp=ttk.Button(utilitiessectionframe,image=coretempimage,text="Core Temp",width=10,compound=LEFT,command=lambda: [intcheck(),install(coretempurl,coretemppath,coretempfile,"coretemp")])
+    coretemp.grid(row=0,column=2)
+
+    ##############################sevenzip########################
+    sevenzipicon= PhotoImage(file = r"images\png-clipart-logos-01-icons-and-7zip-512-7zip-icon-thumbnail.png")
+    sevenzipimage = sevenzipicon.subsample(8,8)
+    sevenzipurl="https://www.7-zip.org/a/7z2201-x64.exe"
+    sevenzippath="downloads//sevenzip.exe"
+    sevenzipfile="downloads\\sevenzip.exe"
+    sevenzip=ttk.Button(utilitiessectionframe,image=sevenzipimage,text="7Zip",width=10,compound=LEFT,command=lambda: [intcheck(),install(sevenzipurl,sevenzippath,sevenzipfile,"sevenzip")])
+    sevenzip.grid(row=0,column=4)
+
+    ##############################anydesk########################
+    anydeskicon= PhotoImage(file = r"images\unnamed.png")
+    anydeskimage = anydeskicon.subsample(12,12)
+    anydeskurl="https://anydesk.com/en/downloads/thank-you?dv=win_exe"
+    anydeskpath="downloads//anydesk.exe"
+    anydeskfile="downloads\\anydesk.exe"
+    anydesk=ttk.Button(utilitiessectionframe,image=anydeskimage,text="Anydesk",width=10,compound=LEFT,command=lambda: [intcheck(),install(anydeskurl,anydeskpath,anydeskfile,"anydesk")])
+    anydesk.grid(row=0,column=6)
+    
+    ##############################cpuz########################
+    cpuzicon= PhotoImage(file = r"images\CPU-Z_Icon.svg.png")
+    cpuzimage = cpuzicon.subsample(3,3)
+    cpuzurl="https://download.cpuid.com/cpu-z/cpu-z_2.03-en.exe"
+    cpuzpath="downloads//cpuz.exe"
+    cpuzfile="downloads\\cpuz.exe"
+    cpuz=ttk.Button(utilitiessectionframe,image=cpuzimage,text="CPU-Z",width=10,compound=LEFT,command=lambda: [intcheck(),install(cpuzurl,cpuzpath,cpuzfile,"cpuz")])
+    cpuz.grid(row=0,column=8)
+
+    ##############################etcher########################
+    etchericon= PhotoImage(file = r"images\avatar.png")
+    etcherimage = etchericon.subsample(6,6)
+    etcherurl="https://github.com/balena-io/etcher/releases/download/v1.13.1/balenaEtcher-Setup-1.13.1.exe"
+    etcherpath="downloads//etcher.exe"
+    etcherfile="downloads\\etcher.exe"
+    etcher=ttk.Button(utilitiessectionframe,image=etcherimage,text="Balena Etcher",width=10,compound=LEFT,command=lambda: [intcheck(),install(etcherurl,etcherpath,etcherfile,"etcher")])
+    etcher.grid(row=0,column=10)
+    
+    ##############################gpuz########################
+    gpuzicon= PhotoImage(file = r"images\gpu_z_icon_by_pitmankeks_de0lyld-fullview.png")
+    gpuzimage = gpuzicon.subsample(12,12)
+    gpuzurl="https://www.techspot.com/downloads/downloadnow/4452/?evp=ab945c9425fa6218cc4d5fadc33ecb42&file=4665"
+    gpuzpath="downloads//gpuz.exe"
+    gpuzfile="downloads\\gpuz.exe"
+    gpuz=ttk.Button(utilitiessectionframe,image=gpuzimage,text="GPU-Z",width=10,compound=LEFT,command=lambda: [intcheck(),install(gpuzurl,gpuzpath,gpuzfile,"gpuz")])
+    gpuz.grid(row=0,column=12)
 
     ################passwordmanager###########
+    """
+    passwordmanagericon= PhotoImage(file = r"images\1.png")
+    passwordmanagerimage = passwordmanagericon.subsample(7,7)
+    """
     passwordmanagerurl="https://github.com/VarunAdhityaGB/Password-Manager-GUI/releases/download/v.1.2/Password_Manager_v.1.2_Setup.exe"
     passwordmanagerpath="downloads//passwordmanager.exe"
     passwordmanagerfile="downloads\\passwordmanager.exe"
-    passwordmanagerutility=ttk.Button(utilitiessectionframe,text="passwordmanager",width=15,compound=LEFT,command=lambda: [intcheck(),install(passwordmanagerurl,passwordmanagerpath,passwordmanagerfile,"passwordmanager")])
-    passwordmanagerutility.grid(row=0,column=0)
-    
-    
-    
+    passwordmanagerutility=ttk.Button(utilitiessectionframe,text="Password Manager",width=15,compound=LEFT,command=lambda: [intcheck(),install(passwordmanagerurl,passwordmanagerpath,passwordmanagerfile,"passwordmanager")])
+    passwordmanagerutility.grid(row=2,column=0)
+
+    ##############################revouninstaller########################
+    revouninstallericon= PhotoImage(file = r"images\Revouninstallerpro_icon.png")
+    revouninstallerimage = revouninstallericon.subsample(12,12)
+    revouninstallerurl="https://www.revouninstaller.com/start-freeware-download/"
+    revouninstallerpath="downloads//revouninstaller.exe"
+    revouninstallerfile="downloads\\revouninstaller.exe"
+    revouninstaller=ttk.Button(utilitiessectionframe,image=revouninstallerimage,text="Revo Uninstaller",width=12,compound=LEFT,command=lambda: [intcheck(),install(revouninstallerurl,revouninstallerpath,revouninstallerfile,"revouninstaller")])
+    revouninstaller.grid(row=2,column=2)
+
     main.mainloop()
-
-
 
 mainsplash.after(3000, mainwindow)
 mainsplash.mainloop()
