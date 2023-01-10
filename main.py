@@ -7,9 +7,6 @@ import sv_ttk as sv
 import os 
 import requests
 
-class AppURLopener(request.FancyURLopener):
-    version = "Mozilla/5.0"
-
 def intcheck():
     def internet_stat(url="https://www.google.com/", timeout=3):
         try:
@@ -36,7 +33,15 @@ def install(url,path,file,appname):
     text="do you want to install "+appname+"?"
     x = messagebox.askyesno("do you want to install this application?",text )
     while x == 1:
-        response = request.urlretrieve(url,path)
+        req = request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0;Win64)',
+           'Accept-Language': 'en-US,en;q=0.8',
+           'Accept-Encoding': 'gzip,deflate,sdch',
+           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+           'Connection': 'keep-alive'
+          })
+        request.urlretrieve(req.full_url, path)
+        """response = request.urlretrieve(url,path)
+        """
         os.system(file)
         break
 
@@ -47,7 +52,7 @@ app_width = 1024
 app_height = 512
 screenwidth = mainsplash.winfo_screenwidth()
 screenheight = mainsplash.winfo_screenheight()
-mainsplash.attributes("-alpha", 0.95)
+mainsplash.attributes("-alpha", 0.90)
 x = (screenwidth / 2) - (app_width / 2)
 y = (screenheight / 2) - (app_height / 2)
 
@@ -67,7 +72,7 @@ def mainwindow():
     main.geometry(f'{app_width}x{app_height}')
     main.title("Softhub")
     main.tk.call('wm', 'iconphoto', main._w, ImageTk.PhotoImage(file='images\softhub.ico'))
-    main.attributes("-alpha", 0.9)
+    main.attributes("-alpha", 0.96)
 
     
     main_frame = Frame(main)
@@ -177,7 +182,7 @@ def mainwindow():
 
     chromeicon= PhotoImage(file = r"images\Google_Chrome_icon_(February_2022).svg.png")
     chromeimage = chromeicon.subsample(45,45)
-    chromeurl="https://www.google.com/intl/en_in/chrome/thank-you.html?statcb=1&installdataindex=empty&defaultbrowser=0#"
+    chromeurl="https://dl.google.com/tag/s/appguid%3D%7B8A69D345-D564-463C-AFF1-A69D9E530F96%7D%26iid%3D%7B6F291CBF-DCB7-0B2B-FC28-010EF4CE0BB3%7D%26lang%3Den%26browser%3D4%26usagestats%3D1%26appname%3DGoogle%2520Chrome%26needsadmin%3Dprefers%26ap%3Dx64-stable-statsdef_1%26brand%3DYTUH%26installdataindex%3Dempty/update2/installers/ChromeSetup.exe"
     chromepath="downloads//chrome.exe"
     chromefile="downloads\\chrome.exe"
     chromebrowser=ttk.Button(browsersectionframe,image=chromeimage,text="Chrome",width=10,compound=LEFT,command=lambda: [intcheck(),install(chromeurl,chromepath,chromefile,"chrome browser")])
@@ -187,7 +192,7 @@ def mainwindow():
 
     msedgeicon= PhotoImage(file = r"images\Microsoft_Edge_logo_(2019).svg.png")
     msedgeimage = msedgeicon.subsample(11,11)
-    msedgeurl="https://microsoft-edge.en.softonic.com/download"
+    msedgeurl="https://c2rsetup.officeapps.live.com/c2r/downloadEdge.aspx?platform=Default&source=EdgeStablePage&Channel=Stable&language=en&brand=M100"
     msedgepath="downloads//msedge.exe"
     msedgefile="downloads\\msedge.exe"
     msedgebrowser=ttk.Button(browsersectionframe,image=msedgeimage,text="MS Edge",width=10,compound=LEFT,command=lambda: [intcheck(),install(msedgeurl,msedgepath,msedgefile,"msedge browser")])
@@ -219,7 +224,7 @@ def mainwindow():
 
     discordicon= PhotoImage(file = r"images\636e0a6a49cf127bf92de1e2_icon_clyde_blurple_RGB.png")
     discordimage = discordicon.subsample(12,12)
-    discordurl="https://discord.com/api/downloads/distributions/app/installers/latest?channel=stable&platform=win&arch=x86" 
+    discordurl="https://sp-downloads.digitaltrends.com/eca/be8/6b6c0b20c6314a005ffa234ed54d4e2f24/DiscordSetup.exe?signature=c5b5bd3297e936683e09721f070bfb92&expires=1673401556&url=https%3A%2F%2Fdownloads.digitaltrends.com%2Fdiscord%2Fwindows&filename=DiscordSetup.exe" 
     discordpath="downloads//discord.exe"
     discordfile="downloads\\discord.exe"
     discord=ttk.Button(communicationsectionframe,image=discordimage,text="Discord",width=9,compound=LEFT,command=lambda: [intcheck(),install(discordurl,discordpath,discordfile,"discord")])
@@ -255,35 +260,15 @@ def mainwindow():
     zoom=ttk.Button(communicationsectionframe,image=zoomimage,text="Zoom",width=10,compound=LEFT,command=lambda: [intcheck(),install(zoomurl,zoompath,zoomfile,"zoom")])
     zoom.grid(row=0,column=6)
 
-    ##############signal###############
-
-    signalicon= PhotoImage(file = r"images\4423638.png")
-    signalimage = signalicon.subsample(12,12)
-    signalurl="https://updates.signal.org/desktop/signal-desktop-win-6.1.0.exe" 
-    signalpath="downloads//signal.exe"
-    signalfile="downloads\\signal.exe"
-    signal=ttk.Button(communicationsectionframe,image=signalimage,text="Signal",width=10,compound=LEFT,command=lambda: [intcheck(),install(signalurl,signalpath,signalfile,"signal")])
-    signal.grid(row=0,column=8)
-
     ##############slack###############
 
     slackicon= PhotoImage(file = r"images\2111615.png")
     slackimage = slackicon.subsample(12,12)
-    slackurl="https://slack.com/intl/en-in/downloads/instructions/windows"
+    slackurl="https://downloads.slack-edge.com/releases/windows/4.29.149/prod/x64/SlackSetup.exe"
     slackpath="downloads//slack.exe"
     slackfile="downloads\\slack.exe"
     slack=ttk.Button(communicationsectionframe,image=slackimage,text="Slack",width=10,compound=LEFT,command=lambda: [intcheck(),install(slackurl,slackpath,slackfile,"slack")])
-    slack.grid(row=0,column=10)
-
-    ##############whatsapp###############
-
-    whatsappicon= PhotoImage(file = r"images\1753788.png")
-    whatsappimage = whatsappicon.subsample(12,12)
-    whatsappurl="https://www.whatsapp.com/download"
-    whatsapppath="downloads//whatsapp.exe"
-    whatsappfile="downloads\\whatsapp.exe"
-    whatsapp=ttk.Button(communicationsectionframe,image=whatsappimage,text="Whatsapp",width=10,compound=LEFT,command=lambda: [intcheck(),install(whatsappurl,whatsapppath,whatsappfile,"whatsapp")])
-    whatsapp.grid(row=0,column=12)
+    slack.grid(row=0,column=8)
 
     ##############telegram###############
 
@@ -293,17 +278,17 @@ def mainwindow():
     telegrampath="downloads//telegram.exe"
     telegramfile="downloads\\telegram.exe"
     telegram=ttk.Button(communicationsectionframe,image=telegramimage,text="Telegram",width=10,compound=LEFT,command=lambda: [intcheck(),install(telegramurl,telegrampath,telegramfile,"telegram")])
-    telegram.grid(row=2,column=0)
+    telegram.grid(row=0,column=10)
 
     ##############viber###############
 
     vibericon= PhotoImage(file = r"images\2111705.png")
     viberimage = vibericon.subsample(12,12)
-    viberurl="https://www.viber.com/download/"
+    viberurl="https://download.cdn.viber.com/desktop/windows/ViberSetup.exe"
     viberpath="downloads//viber.exe"
     viberfile="downloads\\viber.exe"
     viber=ttk.Button(communicationsectionframe,image=viberimage,text="Viber",width=10,compound=LEFT,command=lambda: [intcheck(),install(viberurl,viberpath,viberfile,"viber")])
-    viber.grid(row=2,column=2)
+    viber.grid(row=0,column=12)
     
     #############################################################development##################################################
     developmentsection=ttk.Label(second_frame,text="Development",font=("Segou UI variable",15))
@@ -331,11 +316,11 @@ def mainwindow():
 
     giticon= PhotoImage(file = r"images\Git-Icon-1788C.png")
     gitimage = giticon.subsample(9,9)
-    giturl="https://git-scm.com/download/win"
+    giturl="https://objects.githubusercontent.com/github-production-release-asset-2e65be/23216272/937f230c-9f0d-4a46-bba3-22d19dc651c1?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAIWNJYAX4CSVEH53A%2F20230110%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20230110T170918Z&X-Amz-Expires=300&X-Amz-Signature=963ec20d9e83e42881e97530dce71223100da3a33d9e3ad895dc9cd752ce904f&X-Amz-SignedHeaders=host&actor_id=112751363&key_id=0&repo_id=23216272&response-content-disposition=attachment%3B%20filename%3DGit-2.39.0.2-64-bit.exe&response-content-type=application%2Foctet-stream"
     gitpath="downloads//git.exe"
     gitfile="downloads\\git.exe"
     git=ttk.Button(developmentsectionframe,image=gitimage,text="Git",width=10,compound=LEFT,command=lambda: [intcheck(),install(giturl,gitpath,gitfile,"git")])
-    git.grid(row=1,column=0)
+    git.grid(row=0,column=0)
 
     ##############githubdesktop###############
 
@@ -345,17 +330,17 @@ def mainwindow():
     githubdesktoppath="downloads//githubdesktop.exe"
     githubdesktopfile="downloads\\githubdesktop.exe"
     githubdesktop=ttk.Button(developmentsectionframe,image=githubdesktopimage,text="Github Desktop",width=12,compound=LEFT,command=lambda: [intcheck(),install(githubdesktopurl,githubdesktoppath,githubdesktopfile,"githubdesktop")])
-    githubdesktop.grid(row=1,column=2)
+    githubdesktop.grid(row=0,column=2)
 
     ##############jetbrainstoolbox###############
 
     jetbrainstoolboxicon= PhotoImage(file = r"images\toolbox_logo_300x300.png")
     jetbrainstoolboximage = jetbrainstoolboxicon.subsample(7,7)
-    jetbrainstoolboxurl="https://www.jetbrains.com/toolbox-app/download/download-thanks.html?platform=windows"
+    jetbrainstoolboxurl="https://download.jetbrains.com/toolbox/jetbrains-toolbox-1.27.2.13801.exe"
     jetbrainstoolboxpath="downloads//jetbrainstoolbox.exe"
     jetbrainstoolboxfile="downloads\\jetbrainstoolbox.exe"
     jetbrainstoolbox=ttk.Button(developmentsectionframe,image=jetbrainstoolboximage,text="Jetbrains Toolbox",width=13,compound=LEFT,command=lambda: [intcheck(),install(jetbrainstoolboxurl,jetbrainstoolboxpath,jetbrainstoolboxfile,"jetbrainstoolbox")])
-    jetbrainstoolbox.grid(row=1,column=4)
+    jetbrainstoolbox.grid(row=0,column=4)
 
     ##############python###############
 
@@ -365,7 +350,7 @@ def mainwindow():
     pythonpath="downloads//python.exe"
     pythonfile="downloads\\python.exe"
     python=ttk.Button(developmentsectionframe,image=pythonimage,text="Python",width=10,compound=LEFT,command=lambda: [intcheck(),install(pythonurl,pythonpath,pythonfile,"python")])
-    python.grid(row=1,column=6)
+    python.grid(row=0,column=6)
 
     ##############vscode###############
 
@@ -375,7 +360,7 @@ def mainwindow():
     vscodepath="downloads//vscode.exe"
     vscodefile="downloads\\vscode.exe"
     vscode=ttk.Button(developmentsectionframe,image=vscodeimage,text="VS Code",width=10,compound=LEFT,command=lambda: [intcheck(),install(vscodeurl,vscodepath,vscodefile,"vscode")])
-    vscode.grid(row=1,column=8)
+    vscode.grid(row=0,column=8)
 
     ##############vscodium###############
 
@@ -385,7 +370,7 @@ def mainwindow():
     vscodiumpath="downloads//vscodium.exe"
     vscodiumfile="downloads\\vscodium.exe"
     vscodium=ttk.Button(developmentsectionframe,image=vscodiumimage,text="VS Codium",width=10,compound=LEFT,command=lambda: [intcheck(),install(vscodiumurl,vscodiumpath,vscodiumfile,"vscodium")])
-    vscodium.grid(row=1,column=10)
+    vscodium.grid(row=0,column=10)
 
     ##############nodejs###############
 
@@ -395,7 +380,37 @@ def mainwindow():
     nodejspath="downloads//nodejs.msi"
     nodejsfile="downloads\\nodejs.msi"
     nodejs=ttk.Button(developmentsectionframe,image=nodejsimage,text="Node JS",width=10,compound=LEFT,command=lambda: [intcheck(),install(nodejsurl,nodejspath,nodejsfile,"nodejs")])
-    nodejs.grid(row=1,column=12)
+    nodejs.grid(row=0,column=12)
+
+    ##############rust###############
+
+    rusticon= PhotoImage(file = r"images\Rust_programming_language_black_logo.svg.png")
+    rustimage = rusticon.subsample(48,48)
+    rusturl="https://static.rust-lang.org/rustup/dist/x86_64-pc-windows-msvc/rustup-init.exe"
+    rustpath="downloads//rust.exe"
+    rustfile="downloads\\rust.exe"
+    rust=ttk.Button(developmentsectionframe,image=rustimage,text="Rust",width=10,compound=LEFT,command=lambda: [intcheck(),install(rusturl,rustpath,rustfile,"Rust")])
+    rust.grid(row=2,column=0)
+
+    ##############visualstudio###############
+
+    vsstudioicon= PhotoImage(file = r"images\Visual_Studio_Icon_2022.svg.png")
+    vsstudioimage = vsstudioicon.subsample(48,48)
+    vsstudiourl=" https://c2rsetup.officeapps.live.com/c2r/downloadVS.aspx?sku=community&channel=Release&version=VS2022&source=VSLandingPage&includeRecommended=true&cid=2030:7c3d140c71b14b52b67aef7b3a3a604c"
+    vsstudiopath="downloads//vsstudio.exe"
+    vsstudiofile="downloads\\vsstudio.exe"
+    vsstudio=ttk.Button(developmentsectionframe,image=vsstudioimage,text="Visual Studio 2022",width=14,compound=LEFT,command=lambda: [intcheck(),install(vsstudiourl,vsstudiopath,vsstudiofile,"vs studio 2022")])
+    vsstudio.grid(row=2,column=2)
+
+    ##############sublime###############
+
+    sublimeicon= PhotoImage(file = r"images\download.png")
+    sublimeimage = sublimeicon.subsample(5,5)
+    sublimeurl="https://download.sublimetext.com/sublime_text_build_4143_x64_setup.exe"
+    sublimepath="downloads//sublime.exe"
+    sublimefile="downloads\\sublime.exe"
+    sublime=ttk.Button(developmentsectionframe,image=sublimeimage,text="Sublime",width=10,compound=LEFT,command=lambda: [intcheck(),install(sublimeurl,sublimepath,sublimefile,"sublime")])
+    sublime.grid(row=2,column=4)
 
     #############################################################utilities##################################################
 
@@ -423,16 +438,16 @@ def mainwindow():
     ##############################hwinfo########################
     hwinfoicon= PhotoImage(file = r"images\hwinfo-icon-512x512-8ybzko3v.png")
     hwinfoimage = hwinfoicon.subsample(12,12)
-    hwinfourl="https://www.hwinfo.com/download/"
+    hwinfourl="https://download.fosshub.com/Protected/expiretime=1673420828;badurl=aHR0cHM6Ly93d3cuZm9zc2h1Yi5jb20vSFdpTkZPLmh0bWw=/5f861ee14a1074acf7d825c276f32ba624ec19341942bd9c155fef16d2305d85/5b969867e5c78775cb187a52/639055157bcd531cda461531/hwi_734.exe"
     hwinfopath="downloads//hwinfo.exe"
-    hwinfofile="downloads\\hwinfoxe"
+    hwinfofile="downloads\\hwinfo.exe"
     hwinfo=ttk.Button(utilitiessectionframe,image=hwinfoimage,text="HW Info",width=10,compound=LEFT,command=lambda: [intcheck(),install(hwinfourl,hwinfopath,hwinfofile,"hwinfo")])
     hwinfo.grid(row=0,column=0)
 
     ##############################coretemp########################
     coretempicon= PhotoImage(file = r"images\34454443.png")
     coretempimage = coretempicon.subsample(7,7)
-    coretempurl="https://www.alcpu.com/CoreTemp/Core-Temp-setup.exe"
+    coretempurl="https://files01.tchspt.com/temp/Core-Temp-setup.exe"
     coretemppath="downloads//coretemp.exe"
     coretempfile="downloads\\coretemp.exe"
     coretemp=ttk.Button(utilitiessectionframe,image=coretempimage,text="Core Temp",width=10,compound=LEFT,command=lambda: [intcheck(),install(coretempurl,coretemppath,coretempfile,"coretemp")])
@@ -442,15 +457,15 @@ def mainwindow():
     sevenzipicon= PhotoImage(file = r"images\png-clipart-logos-01-icons-and-7zip-512-7zip-icon-thumbnail.png")
     sevenzipimage = sevenzipicon.subsample(8,8)
     sevenzipurl="https://www.7-zip.org/a/7z2201-x64.exe"
-    sevenzippath="downloads//sevenzip.exe"
-    sevenzipfile="downloads\\sevenzip.exe"
+    sevenzippath="downloads//7zip.exe"
+    sevenzipfile="downloads\\7zip.exe"
     sevenzip=ttk.Button(utilitiessectionframe,image=sevenzipimage,text="7Zip",width=10,compound=LEFT,command=lambda: [intcheck(),install(sevenzipurl,sevenzippath,sevenzipfile,"sevenzip")])
     sevenzip.grid(row=0,column=4)
 
     ##############################anydesk########################
     anydeskicon= PhotoImage(file = r"images\unnamed.png")
     anydeskimage = anydeskicon.subsample(12,12)
-    anydeskurl="https://anydesk.com/en/downloads/thank-you?dv=win_exe"
+    anydeskurl="https://download.anydesk.com/AnyDesk.exe"
     anydeskpath="downloads//anydesk.exe"
     anydeskfile="downloads\\anydesk.exe"
     anydesk=ttk.Button(utilitiessectionframe,image=anydeskimage,text="Anydesk",width=10,compound=LEFT,command=lambda: [intcheck(),install(anydeskurl,anydeskpath,anydeskfile,"anydesk")])
@@ -477,7 +492,7 @@ def mainwindow():
     ##############################gpuz########################
     gpuzicon= PhotoImage(file = r"images\gpu_z_icon_by_pitmankeks_de0lyld-fullview.png")
     gpuzimage = gpuzicon.subsample(12,12)
-    gpuzurl="https://www.techspot.com/downloads/downloadnow/4452/?evp=ab945c9425fa6218cc4d5fadc33ecb42&file=4665"
+    gpuzurl="https://files1.majorgeeks.com/10afebdbffcd4742c81a3cb0f6ce4092156b4375/video/GPU-Z.2.52.0.exe"
     gpuzpath="downloads//gpuz.exe"
     gpuzfile="downloads\\gpuz.exe"
     gpuz=ttk.Button(utilitiessectionframe,image=gpuzimage,text="GPU-Z",width=10,compound=LEFT,command=lambda: [intcheck(),install(gpuzurl,gpuzpath,gpuzfile,"gpuz")])
@@ -492,7 +507,8 @@ def mainwindow():
     passwordmanagerpath="downloads//passwordmanager.exe"
     passwordmanagerfile="downloads\\passwordmanager.exe"
     passwordmanagerutility=ttk.Button(utilitiessectionframe,text="Password Manager",width=15,compound=LEFT,command=lambda: [intcheck(),install(passwordmanagerurl,passwordmanagerpath,passwordmanagerfile,"passwordmanager")])
-    passwordmanagerutility.grid(row=2,column=0)
+    """passwordmanagerutility.grid(row=2,column=0)
+    """
 
     ##############################revouninstaller########################
     revouninstallericon= PhotoImage(file = r"images\Revouninstallerpro_icon.png")
@@ -501,7 +517,43 @@ def mainwindow():
     revouninstallerpath="downloads//revouninstaller.exe"
     revouninstallerfile="downloads\\revouninstaller.exe"
     revouninstaller=ttk.Button(utilitiessectionframe,image=revouninstallerimage,text="Revo Uninstaller",width=12,compound=LEFT,command=lambda: [intcheck(),install(revouninstallerurl,revouninstallerpath,revouninstallerfile,"revouninstaller")])
-    revouninstaller.grid(row=2,column=2)
+    revouninstaller.grid(row=2,column=0)
+
+    ##############################powertoys########################
+    powertoysicon= PhotoImage(file = r"images\2020_PowerToys_Icon.svg.png")
+    powertoysimage = powertoysicon.subsample(48,48)
+    powertoysurl="https://github.com/microsoft/PowerToys/releases/download/v0.66.0/PowerToysSetup-0.66.0-x64.exe"
+    powertoyspath="downloads//powertoys.exe"
+    powertoysfile="downloads\\powertoys.exe"
+    powertoys=ttk.Button(utilitiessectionframe,image=powertoysimage,text="Powertoys",width=12,compound=LEFT,command=lambda: [intcheck(),install(powertoysurl,powertoyspath,powertoysfile,"powertoys")])
+    powertoys.grid(row=2,column=2)
+
+    ##############################autohotkey########################
+    autohotkeyicon= PhotoImage(file = r"images\sBnPQRG.png")
+    autohotkeyimage = autohotkeyicon.subsample(6,6)
+    autohotkeyurl="https://www.autohotkey.com/download/ahk-v2.exe"
+    autohotkeypath="downloads//autohotkey.exe"
+    autohotkeyfile="downloads\\autohotkey.exe"
+    autohotkey=ttk.Button(utilitiessectionframe,image=autohotkeyimage,text="Autohotkey",width=12,compound=LEFT,command=lambda: [intcheck(),install(autohotkeyurl,autohotkeypath,autohotkeyfile,"autohotkey")])
+    autohotkey.grid(row=2,column=4)
+
+    ##############################bitwarden########################
+    bitwardenicon= PhotoImage(file = r"images\1200x630bb.png")
+    bitwardenimage = bitwardenicon.subsample(16,16)
+    bitwardenurl="https://objects.githubusercontent.com/github-production-release-asset-2e65be/53538899/97993fce-af92-400b-b5c8-c77f2382da49?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAIWNJYAX4CSVEH53A%2F20230110%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20230110T182412Z&X-Amz-Expires=300&X-Amz-Signature=838086e218d4425ad8ddc247822e0a0b6d6c37230c36f91a9d96444bdef95bf8&X-Amz-SignedHeaders=host&actor_id=112751363&key_id=0&repo_id=53538899&response-content-disposition=attachment%3B%20filename%3DBitwarden-Installer-2022.12.0.exe&response-content-type=application%2Foctet-stream"
+    bitwardenpath="downloads//bitwarden.exe"
+    bitwardenfile="downloads\\bitwarden.exe"
+    bitwarden=ttk.Button(utilitiessectionframe,image=bitwardenimage,text="Bitwarden",width=12,compound=LEFT,command=lambda: [intcheck(),install(bitwardenurl,bitwardenpath,bitwardenfile,"bitwarden")])
+    bitwarden.grid(row=2,column=6)
+
+    ##############################everythingsearch########################
+    everythingsearchicon= PhotoImage(file = r"images\dbc1fc0d2b9e238f5863eb19ef214629.png")
+    everythingsearchimage = everythingsearchicon.subsample(6,6)
+    everythingsearchurl="https://www.voidtools.com/Everything-1.4.1.1022.x86-Setup.exe"
+    everythingsearchpath="downloads//everythingsearch.exe"
+    everythingsearchfile="downloads\\everythingsearch.exe"
+    everythingsearch=ttk.Button(utilitiessectionframe,image=everythingsearchimage,text="Everything search",width=14,compound=LEFT,command=lambda: [intcheck(),install(everythingsearchurl,everythingsearchpath,everythingsearchfile,"everythingsearch")])
+    everythingsearch.grid(row=2,column=8)
 
     main.mainloop()
 
