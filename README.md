@@ -1,2 +1,2 @@
 # Softhub
-a package manager to install helpful apps.
+a package manager to install apps just by a click.
