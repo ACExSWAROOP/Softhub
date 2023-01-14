@@ -8,49 +8,7 @@ import sv_ttk as sv
 import os 
 import requests
 from ctypes import windll
-
-def intcheck():
-    def internet_stat(url="https://www.google.com/", timeout=3):
-        try:
-            r = requests.head(url=url, timeout=timeout)
-            return True
-        except requests.exceptions.ConnectionError as e:
-            return False
-            
-    net_stat = internet_stat()
-
-    while net_stat==False:
-        x=messagebox.askretrycancel("no internet connection.","no internet connection please try later.")
-        if x==1:
-            net_stat=internet_stat()
-            if net_stat==True:
-                break
-        elif x==0:
-            break
-
-        if net_stat==True:
-            continue
-
-def install(url,path,file,appname):
-    text="do you want to install "+appname+"?"
-    x = messagebox.askyesno("do you want to install this application?",text )
-    while x == 1:
-        
-        try:
-            req = request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0;Win64)',
-            'Accept-Language': 'en-US,en;q=0.8',
-            'Accept-Encoding': 'gzip,deflate,sdch',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Connection': 'keep-alive'
-            })
-            x = messagebox.showinfo("Downloading","wait until the app is downloaded")
-            request.urlretrieve(req.full_url, path)
-            os.system(file)
-            break
-        except urllib.error.HTTPError:
-            print(appname)
-            x = messagebox.showinfo("sorry for the inconvenience","sorry for the technical problem.please try again later. :(")
-
+import subprocess
 
 mainsplash = Tk()
 sv.set_theme("dark")
@@ -73,7 +31,7 @@ def mainwindow():
     global close_button 
     global expand_button 
     global minimize_button
-
+    global main
     main = Toplevel()
     s= ttk.Style()
     s.configure('.', font=('Segoe UI Variable', 10))
@@ -120,7 +78,13 @@ def mainwindow():
         main.focus() 
         main.attributes("-alpha",1) # so you can see the window when is not minimized
         if main.minimized == True:
-            main.minimized = False                              
+            main.minimized = False     
+
+    def deminimzewhenappinstalled():
+        main.focus() 
+        main.attributes("-alpha",1) # so you can see the window when is not minimized
+        if main.minimized == True:
+            main.minimized = False        
         
 
     def maximize_me():
@@ -278,30 +242,98 @@ def mainwindow():
     main.bind("<FocusIn>",deminimize) # to view the window by clicking on the window icon on the taskbar
     main.after(10, lambda: set_appwindow(main)) # to see the icon on the task bar
 
-    # Create Frame for X Scrollbar
+    def intcheck(id,appname):
+        def internet_stat(url="https://www.google.com/", timeout=3):
+            try:
+                r = requests.head(url=url, timeout=timeout)
+                return True
+            except requests.exceptions.ConnectionError as e:
+                return False
+                
+        net_stat = internet_stat()
+
+        while net_stat==False:
+            x=messagebox.askretrycancel("no internet connection.","no internet connection please try later.")
+            if x==1:
+                net_stat=internet_stat()
+                if net_stat==True:
+                    wingetcheck(id,appname)  
+            elif x==0:
+                break
+
+        if net_stat==True:
+            wingetcheck(id,appname)   
+
+    def wingetcheck(id,appname):
+        try:
+            subprocess.run(["winget", "--version"], check=True, capture_output=True)
+            print("Winget is already installed.")
+            wingetinstall(id,appname)
+        except subprocess.CalledProcessError:
+            subprocess.run(["powershell", "-Command", "(New-Object Net.WebClient).DownloadFile('https://github.com/microsoft/winget-cli/releases/latest/download/Winget.exe', 'winget.exe')"], check=True)
+            subprocess.run(["winget", "install","--id", "Winget"], check=True)
+            print("Winget has been installed.")
+
+    def wingetinstall(id,appname):
+        print(id)
+        text="do you want to install "+appname+"?"
+        x = messagebox.askyesno("do you want to install this application?",text )
+        while x == 1:
+            try:
+                minimize_me()
+                messagebox.showinfo("have patience","app is being installed.please wait until the installation is finished.")
+                subprocess.run(["winget", "install", "--id", id ], check=True)
+                completetext=appname+" has been installed successfully"
+                messagebox.showinfo("installation complete", completetext)
+                deminimzewhenappinstalled()
+                break
+            except subprocess.CalledProcessError:
+                messagebox.showinfo("app already installed.","app already installed.")
+                deminimzewhenappinstalled()
+                break
+
+    def urlinstall(url,path,file,appname):
+        text="do you want to install "+appname+"?"
+        x = messagebox.askyesno("do you want to install this application?",text )
+        while x == 1:
+            try:
+                req = request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0;Win64)',
+                'Accept-Language': 'en-US,en;q=0.8',
+                'Accept-Encoding': 'gzip,deflate,sdch',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Connection': 'keep-alive'
+                })
+                x = messagebox.showinfo("Downloading","wait until the app is downloaded")
+                request.urlretrieve(req.full_url, path)
+                os.system(file)
+                break
+            except urllib.error.HTTPError:
+                print(appname)
+                x = messagebox.showinfo("sorry for the inconvenience","sorry for the technical problem.please try again later. :(")
+            except requests.exceptions.ConnectionError:
+                x=messagebox.askretrycancel("no internet connection.","no internet connection please try later.")
+
     sec = Frame(window)
     sec.pack(fill=X,side=BOTTOM)
 
-    # Create A Canvas
     my_canvas = Canvas(window)      
     my_canvas.pack(side=LEFT,fill=BOTH,expand=1)
 
-    # Add A Scrollbars to Canvas
     x_scrollbar = ttk.Scrollbar(sec,orient=HORIZONTAL,command=my_canvas.xview)
     x_scrollbar.pack(side=BOTTOM,fill=X)
     y_scrollbar = ttk.Scrollbar(window,orient=VERTICAL,command=my_canvas.yview)
     y_scrollbar.pack(side=RIGHT,fill=Y)
 
-    # Configure the canvas
     my_canvas.configure(xscrollcommand=x_scrollbar.set)
     my_canvas.configure(yscrollcommand=y_scrollbar.set)
     my_canvas.bind("<Configure>",lambda e: my_canvas.config(scrollregion= my_canvas.bbox(ALL))) 
 
-    # Create Another Frame INSIDE the Canvas
     second_frame = Frame(my_canvas)
 
-    # Add that New Frame a Window In The Canvas
     my_canvas.create_window((0,0),window= second_frame, anchor="nw")
+
+
+    ########################################################browsers#######################################################
 
     browser_frame = Frame(second_frame)
     browser_frame.grid(row=0 ,column=0,sticky=E+W)
@@ -314,111 +346,64 @@ def mainwindow():
 
     x_scrollbar = ttk.Scrollbar(broser_frame2,orient=HORIZONTAL,command=browsercanvas.xview)
     x_scrollbar.pack(side=BOTTOM,fill=X)
+
     browsercanvas.configure(xscrollcommand=x_scrollbar.set)
     browsercanvas.bind("<Configure>",lambda e: browsercanvas.config(scrollregion= browsercanvas.bbox(ALL)))
-    broser_frame3 = Frame(browsercanvas)
-    browsercanvas.create_window((100,100),window= broser_frame3, anchor="nw")
+    
+    browser_frame3 = Frame(browsercanvas)
+    browsercanvas.create_window((100,100),window= browser_frame3, anchor="nw")
 
-    ########################################################browsers#######################################################
-
-    browsersectionframe= Frame(broser_frame3)
+    browsersectionframe= Frame(browser_frame3)
     browsersectionframe.grid(row=0,column=0)
 
-    browsersection=ttk.Label(browsersectionframe,text="Browsers",font=("Segou UI variable",18))
-    browsersection.grid(row=0,column=1,ipady=15,ipadx=15)
+    browsersection=ttk.Label(browsersectionframe,text="  Browsers",font=("Segou UI variable",18))
+    browsersection.grid(row=0,column=0,ipady=15,ipadx=15)
 
     #############################spacing between each app##############################
 
-    spacing=ttk.Label(browsersectionframe,text="       ")
-    spacing.grid(row=0,column=0)
-    spacing=ttk.Label(browsersectionframe,text="       ")
-    spacing.grid(row=0,column=3)
-    spacing=ttk.Label(browsersectionframe,text="       ")
-    spacing.grid(row=0,column=5)
-    spacing=ttk.Label(browsersectionframe,text="       ")
-    spacing.grid(row=0,column=0)
-    spacing=ttk.Label(browsersectionframe,text="       ")
-    spacing.grid(row=0,column=7)
-    spacing=ttk.Label(browsersectionframe,text="       ")
-    spacing.grid(row=0,column=9)
-    spacing=ttk.Label(browsersectionframe,text="       ")
-    spacing.grid(row=0,column=11)
-    spacing=ttk.Label(browsersectionframe,text="       ")
-    spacing.grid(row=0,column=13)
-    spacing=ttk.Label(browsersectionframe,text="       ")
-    spacing.grid(row=0,column=15)
+    for i in range(1, 20, 2):
+        spacing = ttk.Label(browsersectionframe, text="       ")
+        spacing.grid(row=0, column=i)
 
     ##############brave###############
-
     braveicon= PhotoImage(file = r"images\Brave_lion_icon.svg.png")
     braveimage = braveicon.subsample(21,21)
-    braveurl="https://laptop-updates.brave.com/latest/winx64"
-    bravepath="downloads//brave.exe"
-    bravefile="downloads\\brave.exe"
-    bravebrowser=ttk.Button(browsersectionframe,image=braveimage,text="        Brave\n\n ★★★★☆ 4.2 ",width=15,compound=LEFT,command=lambda: [intcheck(),install(braveurl,bravepath,bravefile,"brave browser")])
-    bravebrowser.grid(row=0,column=2 ,ipady=30, ipadx=15)
-
+    bravebrowser=ttk.Button(browsersectionframe,image=braveimage,text="        Brave\n\n ★★★★☆ 4.2 ",width=15,compound=LEFT,command=lambda: [intcheck("Brave.Brave","Brave Browser")])
     ##############firefox###############
-
     firefoxicon= PhotoImage(file = r"images\Firefox_logo,_2017.svg.png")
     firefoximage = firefoxicon.subsample(17,17)
-    firefoxurl="https://download.mozilla.org/?product=firefox-stub&os=win&lang=en-US&attribution_code=c291cmNlPXd3dy5nb29nbGUuY29tJm1lZGl1bT1yZWZlcnJhbCZjYW1wYWlnbj0obm90IHNldCkmY29udGVudD0obm90IHNldCkmZXhwZXJpbWVudD0obm90IHNldCkmdmFyaWF0aW9uPShub3Qgc2V0KSZ1YT1jaHJvbWUmdmlzaXRfaWQ9KG5vdCBzZXQp&attribution_sig=3466763a646381f4d23891a79de5b2c5da57cff9698bd5c185e938b48ed303e6"
-    firefoxpath="downloads//firefox.exe"
-    firefoxfile="downloads\\firefox.exe"
-    firefoxbrowser=ttk.Button(browsersectionframe,image=firefoximage,text="       Firefox\n\n ★★★★☆ 4",width=10,compound=LEFT,command=lambda: [intcheck(),install(firefoxurl,firefoxpath,firefoxfile,"firefox browser")])
-    firefoxbrowser.grid(row=0,column=4,ipady=30, ipadx=15)
-
+    firefoxbrowser=ttk.Button(browsersectionframe,image=firefoximage,text="       Firefox\n\n ★★★★☆ 4",width=10,compound=LEFT,command=lambda: [intcheck("Mozilla.Firefox","firefox Browser")])
     ##############librewolf###############
-
     librewolficon= PhotoImage(file = r"images\LibreWolf_icon.svg.png")
     librewolfimage = librewolficon.subsample(30,30)
-    librewolfurl="https://gitlab.com/librewolf-community/browser/windows/uploads/8ca22cbdb72aebdb6e1dc7f096fcf65b/librewolf-108.0.1-1.en-US.win64-setup.exe"
-    librewolfpath="downloads//librewolf.exe"
-    librewolffile="downloads\\librewolf.exe"
-    librewolfbrowser=ttk.Button(browsersectionframe,image=librewolfimage,text="     Librewolf\n\n ★★★★☆ 4",width=10,compound=LEFT,command=lambda: [intcheck(),install(librewolfurl,librewolfpath,librewolffile,"librewolf browser")])
-    librewolfbrowser.grid(row=0,column=6,ipady=30, ipadx=15)
-
+    librewolfbrowser=ttk.Button(browsersectionframe,image=librewolfimage,text="     Librewolf\n\n ★★★★☆ 4",width=10,compound=LEFT,command=lambda: intcheck("Librewolf.Librewolf","Librewolf Browser"))
     ##############tor browser###############
-
     toricon= PhotoImage(file = r"images\Tor_Browser_icon.svg.png")
     torimage = toricon.subsample(17,17)
-    torurl="https://www.torproject.org/dist/torbrowser/12.0.1/torbrowser-install-win64-12.0.1_ALL.exe"
-    torpath="downloads//tor.exe"
-    torfile="downloads\\tor.exe"
-    torbrowser=ttk.Button(browsersectionframe,image=torimage,text="        Tor \n\n ★★★☆☆ 3.5",width=10,compound=LEFT,command=lambda: [intcheck(),install(torurl,torpath,torfile,"tor browser")])
-    torbrowser.grid(row=0,column=8,ipady=30, ipadx=15)
-
+    torbrowser =ttk.Button(browsersectionframe,image=torimage,text="        Tor \n\n ★★★☆☆ 3.5",width=10,compound=LEFT,command=lambda: [intcheck("TorProject.TorBrowser","Tor Browser")])
     ##############vivaldi browser###############
-
     vivaldiicon= PhotoImage(file = r"images\Vivaldi_web_browser_logo.svg.png")
     vivaldiimage = vivaldiicon.subsample(15,15)
-    vivaldiurl="https://downloads.vivaldi.com/stable/Vivaldi.5.6.2867.50.x64.exe"
-    vivaldipath="downloads//vivaldi.exe"
-    vivaldifile="downloads\\vivaldi.exe"
-    vivaldibrowser=ttk.Button(browsersectionframe,image=vivaldiimage,text="     Vivaldi \n\n ★★★☆☆ 3.5",width=10,compound=LEFT,command=lambda: [intcheck(),install(vivaldiurl,vivaldipath,vivaldifile,"vivaldi browser")])
-    vivaldibrowser.grid(row=0,column=10,ipady=30, ipadx=15)
-
+    vivaldibrowser=ttk.Button(browsersectionframe,image=vivaldiimage,text="     Vivaldi \n\n ★★★☆☆ 3.5",width=10,compound=LEFT,command=lambda: [intcheck("VivaldiTechnologies.Vivaldi","Vivaldi Browser")])
     #############chrome##############
-
     chromeicon= PhotoImage(file = r"images\Google_Chrome_icon_(February_2022).svg.png")
     chromeimage = chromeicon.subsample(30,30)
-    chromeurl="https://dl.google.com/tag/s/appguid%3D%7B8A69D345-D564-463C-AFF1-A69D9E530F96%7D%26iid%3D%7B6F291CBF-DCB7-0B2B-FC28-010EF4CE0BB3%7D%26lang%3Den%26browser%3D4%26usagestats%3D1%26appname%3DGoogle%2520Chrome%26needsadmin%3Dprefers%26ap%3Dx64-stable-statsdef_1%26brand%3DYTUH%26installdataindex%3Dempty/update2/installers/ChromeSetup.exe"
-    chromepath="downloads//chrome.exe"
-    chromefile="downloads\\chrome.exe"
-    chromebrowser=ttk.Button(browsersectionframe,image=chromeimage,text="     Chrome \n\n ★★★★☆ 4",width=10,compound=LEFT,command=lambda: [intcheck(),install(chromeurl,chromepath,chromefile,"chrome browser")])
-    chromebrowser.grid(row=0,column=12,ipady=30, ipadx=15)
-
+    chromebrowser=ttk.Button(browsersectionframe,image=chromeimage,text="     Chrome \n\n ★★★★☆ 4",width=10,compound=LEFT,command=lambda: [intcheck("Google.Chrome","Google chrome browser")])
     #############msedge##############
+    msedgeicon= PhotoImage(file = r"images\Microsoft_Edge_Dev_Icon_(2019).svg.png")
+    msedgeimage = msedgeicon.subsample(32,32)
+    msedgebrowser=ttk.Button(browsersectionframe,image=msedgeimage,text="   MS Edge Dev \n\n ★★★☆☆ 3.6",width=10,compound=LEFT,command=lambda: [intcheck("Microsoft.Edge.Dev","Microsoft Edge Dev")])
 
-    msedgeicon= PhotoImage(file = r"images\Microsoft_Edge_logo_(2019).svg.png")
-    msedgeimage = msedgeicon.subsample(7,7)
-    msedgeurl="https://c2rsetup.officeapps.live.com/c2r/downloadEdge.aspx?platform=Default&source=EdgeStablePage&Channel=Stable&language=en&brand=M100"
-    msedgepath="downloads//msedge.exe"
-    msedgefile="downloads\\msedge.exe"
-    msedgebrowser=ttk.Button(browsersectionframe,image=msedgeimage,text="     MS Edge \n\n ★★★☆☆ 3.6",width=10,compound=LEFT,command=lambda: [intcheck(),install(msedgeurl,msedgepath,msedgefile,"msedge browser")])
-    msedgebrowser.grid(row=0,column=14,ipady=30, ipadx=15)
+    #################placements of all browsers################
 
+    browserlists= ["dummy",bravebrowser,firefoxbrowser,librewolfbrowser,torbrowser,vivaldibrowser,chromebrowser,msedgebrowser]
 
+    for i in range(2, len(browserlists)*2, 2):
+        if i/2 < len(browserlists):
+            button = browserlists[i//2]
+            button.grid(row=0, column=i, ipady=30, ipadx=15)
+            
+    #############################################################communication##################################################
     communication_frame = Frame(second_frame)
     communication_frame.grid(row=1 ,column=0,sticky=E+W)
 
@@ -430,104 +415,62 @@ def mainwindow():
 
     x_scrollbar = ttk.Scrollbar(communication_frame2,orient=HORIZONTAL,command=communicationcanvas.xview)
     x_scrollbar.pack(side=BOTTOM,fill=X)
+
     communicationcanvas.configure(xscrollcommand=x_scrollbar.set)
     communicationcanvas.bind("<Configure>",lambda e: communicationcanvas.config(scrollregion= communicationcanvas.bbox(ALL)))
+    
     communication_frame3 = Frame(communicationcanvas)
     communicationcanvas.create_window((100,100),window= communication_frame3, anchor="nw")
-
-    #############################################################communication##################################################
+    
     communicationsectionframe= Frame(communication_frame3)
     communicationsectionframe.grid(row=1,column=0)
 
     communicationsection=ttk.Label(communicationsectionframe,text="Communication",font=("Segou UI variable",18))
     communicationsection.grid(row=0,column=0,pady=15,padx=15)
 
-    
-    spacing=ttk.Label(communicationsectionframe,text="         ")
-    spacing.grid(row=0,column=3)
-    spacing=ttk.Label(communicationsectionframe,text="         ")
-    spacing.grid(row=0,column=5)
-    spacing=ttk.Label(communicationsectionframe,text="         ")
-    spacing.grid(row=0,column=7)
-    spacing=ttk.Label(communicationsectionframe,text="         ")
-    spacing.grid(row=0,column=9)
-    spacing=ttk.Label(communicationsectionframe,text="         ")
-    spacing.grid(row=0,column=11)
-    spacing=ttk.Label(communicationsectionframe,text="         ")
-    spacing.grid(row=1,column=13)
-    spacing=ttk.Label(communicationsectionframe,text="         ")
-    spacing.grid(row=1,column=15)
-
+    for i in range(1, 20, 2):
+        spacing = ttk.Label(communicationsectionframe, text="       ")
+        spacing.grid(row=0, column=i)
 
     ##############discord###############
-
     discordicon= PhotoImage(file = r"images\636e0a6a49cf127bf92de1e2_icon_clyde_blurple_RGB.png")
     discordimage = discordicon.subsample(8,8)
-    discordurl="https://discordapp.com/api/download?platform=win" 
-    discordpath="downloads//discord.exe"
-    discordfile="downloads\\discord.exe"
-    discord=ttk.Button(communicationsectionframe,image=discordimage,text="      Discord \n\n ★★★★☆ 4.5",width=9,compound=LEFT,command=lambda: [intcheck(),install(discordurl,discordpath,discordfile,"discord")])
-    discord.grid(row=0,column=2,ipady=30, ipadx=15)
-
+    discord=ttk.Button(communicationsectionframe,image=discordimage,text="      Discord \n\n ★★★★☆ 4.5",width=9,compound=LEFT,command=lambda: [intcheck("Discord.Discord","Discord")])
     ##############teams###############
-
     teamsicon= PhotoImage(file = r"images\Microsoft_Office_Teams_(2018–present).svg.png")
     teamsimage = teamsicon.subsample(35,35)
-    teamsurl="https://go.microsoft.com/fwlink/p/?LinkID=2187327&clcid=0x409&culture=en-us&country=US"
-    teamspath="downloads//teams.exe"
-    teamsfile="downloads\\teams.exe"
-    teams=ttk.Button(communicationsectionframe,image=teamsimage,text="      Teams \n\n ★★★☆☆ 3.5",width=10,compound=LEFT,command=lambda: [intcheck(),install(teamsurl,teamspath,teamsfile,"teams")])
-    teams.grid(row=0,column=4,ipady=30, ipadx=15)
-
+    teams=ttk.Button(communicationsectionframe,image=teamsimage,text="      Teams \n\n ★★★☆☆ 3.5",width=10,compound=LEFT,command=lambda: [intcheck("Microsoft.Teams","Microsoft Teams")])
     ##############skype###############
-
     skypeicon= PhotoImage(file = r"images\174869.png")
     skypeimage = skypeicon.subsample(9,9)
-    skypeurl="https://go.skype.com/windows.desktop.download"
-    skypepath="downloads//skype.exe"
-    skypefile="downloads\\skype.exe"
-    skype=ttk.Button(communicationsectionframe,image=skypeimage,text="      Skype \n\n ★★★★☆ 4.5",width=10,compound=LEFT,command=lambda: [intcheck(),install(skypeurl,skypepath,skypefile,"skype")])
-    skype.grid(row=0,column=6,ipady=30, ipadx=15)
-
+    skype=ttk.Button(communicationsectionframe,image=skypeimage,text="      Skype \n\n ★★★★☆ 4.5",width=10,compound=LEFT,command=lambda: [intcheck("Microsoft.Skype", "Microsoft Skype")])
     ##############zoom###############
-
     zoomicon= PhotoImage(file = r"images\5e8ce423664eae0004085465.png")
     zoomimage = zoomicon.subsample(5,5)
-    zoomurl="https://zoom.us/client/5.13.3.11494/ZoomInstallerFull.exe?archType=x64"
-    zoompath="downloads//zoom.exe"
-    zoomfile="downloads\\zoom.exe"
-    zoom=ttk.Button(communicationsectionframe,image=zoomimage,text="        Zoom \n\n ★★★★☆ 4.5",width=10,compound=LEFT,command=lambda: [intcheck(),install(zoomurl,zoompath,zoomfile,"zoom")])
-    zoom.grid(row=0,column=8,ipady=30, ipadx=15)
-
+    zoom=ttk.Button(communicationsectionframe,image=zoomimage,text="        Zoom \n\n ★★★★☆ 4.5",width=10,compound=LEFT,command=lambda: [intcheck("Zoom.Zoom","Zoom")])
     ##############slack###############
-
     slackicon= PhotoImage(file = r"images\2111615.png")
     slackimage = slackicon.subsample(9,9)
-    slackurl="https://downloads.slack-edge.com/releases/windows/4.29.149/prod/x64/SlackSetup.exe"
-    slackpath="downloads//slack.exe"
-    slackfile="downloads\\slack.exe"
-    slack=ttk.Button(communicationsectionframe,image=slackimage,text="      Slack \n\n ★★★★☆ 4.5",width=10,compound=LEFT,command=lambda: [intcheck(),install(slackurl,slackpath,slackfile,"slack")])
-    slack.grid(row=0,column=10,ipady=30, ipadx=15)
-
+    slack=ttk.Button(communicationsectionframe,image=slackimage,text="      Slack \n\n ★★★★☆ 4.5",width=10,compound=LEFT,command=lambda: [intcheck("SlackTechnologies.Slack","Slack")])
     ##############telegram###############
-
     telegramicon= PhotoImage(file = r"images\telegram-logo-AD3D08A014-seeklogo.com.png")
     telegramimage = telegramicon.subsample(5,5)
-    telegramurl="https://telegram.org/dl/desktop/win64"
-    telegrampath="downloads//telegram.exe"
-    telegramfile="downloads\\telegram.exe"
-    telegram=ttk.Button(communicationsectionframe,image=telegramimage,text="      Telegram \n\n ★★★☆☆ 3.5",width=10,compound=LEFT,command=lambda: [intcheck(),install(telegramurl,telegrampath,telegramfile,"telegram")])
-    telegram.grid(row=0,column=12,ipady=30, ipadx=15)
-
+    telegram=ttk.Button(communicationsectionframe,image=telegramimage,text="      Telegram \n\n ★★★☆☆ 3.5",width=10,compound=LEFT,command=lambda: [intcheck("Telegram.TelegramDesktop","Telegram Desktop")])
     ##############viber###############
-
     vibericon= PhotoImage(file = r"images\2111705.png")
     viberimage = vibericon.subsample(9,9)
-    viberurl="https://download.cdn.viber.com/desktop/windows/ViberSetup.exe"
-    viberpath="downloads//viber.exe"
-    viberfile="downloads\\viber.exe"
-    viber=ttk.Button(communicationsectionframe,image=viberimage,text="      Viber \n\n ★★★★☆ 4.5",width=10,compound=LEFT,command=lambda: [intcheck(),install(viberurl,viberpath,viberfile,"viber")])
-    viber.grid(row=0,column=14,ipady=30, ipadx=15)
+    viber=ttk.Button(communicationsectionframe,image=viberimage,text="      Viber \n\n ★★★★☆ 4.5",width=10,compound=LEFT,command=lambda: [intcheck("Viber.Viber","Viber")])
+
+    ##########placement of communication apps##########
+    commlists= ["dummy",discord,teams,skype,zoom,slack,telegram,viber]
+
+    for i in range(2, len(commlists)*2, 2):
+        if i/2 < len(commlists):
+            button = commlists[i//2]
+            button.grid(row=0, column=i, ipady=30, ipadx=15)
+    
+    
+    #############################################################development##################################################
     
     development_frame = Frame(second_frame)
     development_frame.grid(row=2 ,column=0,sticky=E+W)
@@ -540,11 +483,12 @@ def mainwindow():
 
     x_scrollbar = ttk.Scrollbar(development_frame2,orient=HORIZONTAL,command=developmentcanvas.xview)
     x_scrollbar.pack(side=BOTTOM,fill=X)
+
     developmentcanvas.configure(xscrollcommand=x_scrollbar.set)
     developmentcanvas.bind("<Configure>",lambda e: developmentcanvas.config(scrollregion= developmentcanvas.bbox(ALL)))
+    
     development_frame3 = Frame(developmentcanvas)
     developmentcanvas.create_window((100,100),window= development_frame3, anchor="nw")
-    #############################################################development##################################################
     
     developmentsectionframe= Frame(development_frame3)
     developmentsectionframe.grid(row=2,column=0,pady=15,padx=15)
@@ -552,126 +496,60 @@ def mainwindow():
     developmentsection=ttk.Label(developmentsectionframe,text="Development",font=("Segou UI variable",18))
     developmentsection.grid(row=0,column=0,pady=15,padx=15)
 
-    spacing=ttk.Label(developmentsectionframe,text="         ")
-    spacing.grid(row=0,column=3)
-    spacing=ttk.Label(developmentsectionframe,text="         ")
-    spacing.grid(row=0,column=5)
-    spacing=ttk.Label(developmentsectionframe,text="         ")
-    spacing.grid(row=0,column=7)
-    spacing=ttk.Label(developmentsectionframe,text="         ")
-    spacing.grid(row=0,column=9)
-    spacing=ttk.Label(developmentsectionframe,text="         ")
-    spacing.grid(row=0,column=11)
-    spacing=ttk.Label(developmentsectionframe,text="         ")
-    spacing.grid(row=0,column=13)
-    spacing=ttk.Label(developmentsectionframe,text="         ")
-    spacing.grid(row=0,column=15)
-    spacing=ttk.Label(developmentsectionframe,text="         ")
-    spacing.grid(row=0,column=17)
-    spacing=ttk.Label(developmentsectionframe,text="         ")
-    spacing.grid(row=0,column=19)
-    spacing=ttk.Label(developmentsectionframe,text="         ")
-    spacing.grid(row=0,column=21)
-    ##############git###############
+    for i in range(1, 30, 2):
+        spacing = ttk.Label(developmentsectionframe, text="       ")
+        spacing.grid(row=0, column=i)
 
+    ##############git###############
     giticon= PhotoImage(file = r"images\Git-Icon-1788C.png")
     gitimage = giticon.subsample(6,6)
-    giturl="https://objects.githubusercontent.com/github-production-release-asset-2e65be/23216272/937f230c-9f0d-4a46-bba3-22d19dc651c1?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAIWNJYAX4CSVEH53A%2F20230110%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20230110T170918Z&X-Amz-Expires=300&X-Amz-Signature=963ec20d9e83e42881e97530dce71223100da3a33d9e3ad895dc9cd752ce904f&X-Amz-SignedHeaders=host&actor_id=112751363&key_id=0&repo_id=23216272&response-content-disposition=attachment%3B%20filename%3DGit-2.39.0.2-64-bit.exe&response-content-type=application%2Foctet-stream"
-    gitpath="downloads//git.exe"
-    gitfile="downloads\\git.exe"
-    git=ttk.Button(developmentsectionframe,image=gitimage,text="      Git",width=10,compound=LEFT,command=lambda: [intcheck(),install(giturl,gitpath,gitfile,"git")])
-    git.grid(row=0,column=2,ipady=30, ipadx=15)
-
+    git=ttk.Button(developmentsectionframe,image=gitimage,text="      Git",width=10,compound=LEFT,command=lambda: [intcheck("Git.Git","Git")])
     ##############githubdesktop###############
-
     githubdesktopicon= PhotoImage(file = r"images\768px-Github-desktop-logo-symbol.svg.png")
     githubdesktopimage = githubdesktopicon.subsample(12,12)
-    githubdesktopurl="https://central.github.com/deployments/desktop/desktop/latest/win32"
-    githubdesktoppath="downloads//githubdesktop.exe"
-    githubdesktopfile="downloads\\githubdesktop.exe"
-    githubdesktop=ttk.Button(developmentsectionframe,image=githubdesktopimage,text="    Github Desktop",width=12,compound=LEFT,command=lambda: [intcheck(),install(githubdesktopurl,githubdesktoppath,githubdesktopfile,"githubdesktop")])
-    githubdesktop.grid(row=0,column=4,ipady=30, ipadx=15)
-
+    githubdesktop=ttk.Button(developmentsectionframe,image=githubdesktopimage,text="    Github Desktop",width=12,compound=LEFT,command=lambda: [intcheck("GitHub.GitHubDesktop","GitHub Desktop")])
     ##############jetbrainstoolbox###############
-
     jetbrainstoolboxicon= PhotoImage(file = r"images\toolbox_logo_300x300.png")
     jetbrainstoolboximage = jetbrainstoolboxicon.subsample(5,5)
-    jetbrainstoolboxurl="https://download.jetbrains.com/toolbox/jetbrains-toolbox-1.27.2.13801.exe"
-    jetbrainstoolboxpath="downloads//jetbrainstoolbox.exe"
-    jetbrainstoolboxfile="downloads\\jetbrainstoolbox.exe"
-    jetbrainstoolbox=ttk.Button(developmentsectionframe,image=jetbrainstoolboximage,text="Jetbrains Toolbox",width=13,compound=LEFT,command=lambda: [intcheck(),install(jetbrainstoolboxurl,jetbrainstoolboxpath,jetbrainstoolboxfile,"jetbrainstoolbox")])
-    jetbrainstoolbox.grid(row=0,column=6,ipady=30, ipadx=15)
-
+    jetbrainstoolbox=ttk.Button(developmentsectionframe,image=jetbrainstoolboximage,text="Jetbrains Toolbox",width=13,compound=LEFT,command=lambda: [intcheck("JetBrains.Toolbox","JetBrains Toolbox")])
     ##############python###############
-
     pythonicon= PhotoImage(file = r"images\5968350.png")
     pythonimage = pythonicon.subsample(9,9)
-    pythonurl="https://www.python.org/ftp/python/3.11.1/python-3.11.1-amd64.exe"
-    pythonpath="downloads//python.exe"
-    pythonfile="downloads\\python.exe"
-    python=ttk.Button(developmentsectionframe,image=pythonimage,text="  Python",width=10,compound=LEFT,command=lambda: [intcheck(),install(pythonurl,pythonpath,pythonfile,"python")])
-    python.grid(row=0,column=8,ipady=30, ipadx=15)
-
+    python=ttk.Button(developmentsectionframe,image=pythonimage,text="  Python",width=10,compound=LEFT,command=lambda: [intcheck("9PJPW5LDXLZ5","Python")])
     ##############vscode###############
-
     vscodeicon= PhotoImage(file = r"images\Visual_Studio_Code_1.35_icon.svg.png")
     vscodeimage = vscodeicon.subsample(36,36)
-    vscodeurl="https://code.visualstudio.com/sha/download?build=stable&os=win32-x64-user"
-    vscodepath="downloads//vscode.exe"
-    vscodefile="downloads\\vscode.exe"
-    vscode=ttk.Button(developmentsectionframe,image=vscodeimage,text="  VS Code",width=10,compound=LEFT,command=lambda: [intcheck(),install(vscodeurl,vscodepath,vscodefile,"vscode")])
-    vscode.grid(row=0,column=10,ipady=30, ipadx=15)
-
+    vscode=ttk.Button(developmentsectionframe,image=vscodeimage,text="  VS Code",width=10,compound=LEFT,command=lambda: [intcheck("Microsoft.VisualStudioCode","Visual Studio Code")])
     ##############vscodium###############
-
     vscodiumicon= PhotoImage(file = r"images\i7zov9ca3ts71.png")
     vscodiumimage = vscodiumicon.subsample(18,18)
-    vscodiumurl="https://github.com/VSCodium/vscodium/releases/download/1.74.2.22355/VSCodiumSetup-x64-1.74.2.22355.exe"
-    vscodiumpath="downloads//vscodium.exe"
-    vscodiumfile="downloads\\vscodium.exe"
-    vscodium=ttk.Button(developmentsectionframe,image=vscodiumimage,text="  VS Codium",width=10,compound=LEFT,command=lambda: [intcheck(),install(vscodiumurl,vscodiumpath,vscodiumfile,"vscodium")])
-    vscodium.grid(row=0,column=12,ipady=30, ipadx=15)
-
+    vscodium=ttk.Button(developmentsectionframe,image=vscodiumimage,text="  VS Codium",width=10,compound=LEFT,command=lambda: [intcheck("VSCodium.VSCodium","VS Codium")])
     ##############nodejs###############
-
     nodejsicon= PhotoImage(file = r"images\5968322.png")
     nodejsimage = nodejsicon.subsample(9,9)
-    nodejsurl="https://nodejs.org/dist/v18.13.0/node-v18.13.0-x64.msi"
-    nodejspath="downloads//nodejs.msi"
-    nodejsfile="downloads\\nodejs.msi"
-    nodejs=ttk.Button(developmentsectionframe,image=nodejsimage,text="  Node JS",width=10,compound=LEFT,command=lambda: [intcheck(),install(nodejsurl,nodejspath,nodejsfile,"nodejs")])
-    nodejs.grid(row=0,column=14,ipady=30, ipadx=15)
-
+    nodejs=ttk.Button(developmentsectionframe,image=nodejsimage,text="  Node JS",width=10,compound=LEFT,command=lambda: [intcheck("OpenJS.NodeJS","Node JS")])
     ##############rust###############
-
     rusticon= PhotoImage(file = r"images\Rust_programming_language_black_logo.svg.png")
     rustimage = rusticon.subsample(36,36)
-    rusturl="https://static.rust-lang.org/rustup/dist/x86_64-pc-windows-msvc/rustup-init.exe"
-    rustpath="downloads//rust.exe"
-    rustfile="downloads\\rust.exe"
-    rust=ttk.Button(developmentsectionframe,image=rustimage,text="     Rust",width=10,compound=LEFT,command=lambda: [intcheck(),install(rusturl,rustpath,rustfile,"Rust")])
-    rust.grid(row=0,column=16,ipady=30, ipadx=15)
-
+    rust=ttk.Button(developmentsectionframe,image=rustimage,text="     Rust",width=10,compound=LEFT,command=lambda: [intcheck("Rustlang.Rust.GNU","Rust language")])
     ##############visualstudio###############
-
     vsstudioicon= PhotoImage(file = r"images\Visual_Studio_Icon_2022.svg.png")
     vsstudioimage = vsstudioicon.subsample(36,36)
-    vsstudiourl=" https://c2rsetup.officeapps.live.com/c2r/downloadVS.aspx?sku=community&channel=Release&version=VS2022&source=VSLandingPage&includeRecommended=true&cid=2030:7c3d140c71b14b52b67aef7b3a3a604c"
-    vsstudiopath="downloads//vsstudio.exe"
-    vsstudiofile="downloads\\vsstudio.exe"
-    vsstudio=ttk.Button(developmentsectionframe,image=vsstudioimage,text="Visual Studio 2022",width=14,compound=LEFT,command=lambda: [intcheck(),install(vsstudiourl,vsstudiopath,vsstudiofile,"vs studio 2022")])
-    vsstudio.grid(row=0,column=18,ipady=30, ipadx=15)
-
+    vsstudio=ttk.Button(developmentsectionframe,image=vsstudioimage,text="Visual Studio 2022",width=14,compound=LEFT,command=lambda: [intcheck("Microsoft.VisualStudio.2022.Community-Preview","Microsoft Visual Studio 2022 Community")])
     ##############sublime###############
-
     sublimeicon= PhotoImage(file = r"images\download.png")
     sublimeimage = sublimeicon.subsample(4,4)
-    sublimeurl="https://download.sublimetext.com/sublime_text_build_4143_x64_setup.exe"
-    sublimepath="downloads//sublime.exe"
-    sublimefile="downloads\\sublime.exe"
-    sublime=ttk.Button(developmentsectionframe,image=sublimeimage,text="    Sublime",width=10,compound=LEFT,command=lambda: [intcheck(),install(sublimeurl,sublimepath,sublimefile,"sublime")])
-    sublime.grid(row=0,column=20,ipady=30, ipadx=15)
+    sublime=ttk.Button(developmentsectionframe,image=sublimeimage,text="    Sublime",width=10,compound=LEFT,command=lambda: [intcheck("SublimeHQ.SublimeText.4","Sublime Text")])
 
+    ##########placement of dev apps##########
+    devlists= ["dummy",git,githubdesktop,jetbrainstoolbox,python,vscode,vscodium,nodejs,rust,vsstudio,sublime]
+
+    for i in range(2, len(devlists)*2, 2):
+        if i/2 < len(devlists):
+            button = devlists[i//2]
+            button.grid(row=0, column=i, ipady=30, ipadx=15)
+
+    #############################################################utilities##################################################
     utilities_frame = Frame(second_frame)
     utilities_frame.grid(row=3 ,column=0,sticky=E+W)
 
@@ -683,172 +561,93 @@ def mainwindow():
 
     x_scrollbar = ttk.Scrollbar(utilities_frame2,orient=HORIZONTAL,command=utilitiescanvas.xview)
     x_scrollbar.pack(side=BOTTOM,fill=X)
+
     utilitiescanvas.configure(xscrollcommand=x_scrollbar.set)
     utilitiescanvas.bind("<Configure>",lambda e: utilitiescanvas.config(scrollregion= utilitiescanvas.bbox(ALL)))
+    
     utilities_frame3 = Frame(utilitiescanvas)
     utilitiescanvas.create_window((100,100),window= utilities_frame3, anchor="nw")
-    #############################################################utilities##################################################
+
     utilitiessectionframe= Frame(utilities_frame3)
     utilitiessectionframe.grid(row=0,column=0,pady=15,padx=15)
 
     utilitiessection=ttk.Label(utilitiessectionframe,text="Utilities",font=("Segou UI variable",18))
     utilitiessection.grid(row=0,column=0,pady=15,padx=15)
 
-    spacing=ttk.Label(utilitiessectionframe,text="         ")
-    spacing.grid(row=0,column=1)
-    spacing=ttk.Label(utilitiessectionframe,text="         ")
-    spacing.grid(row=0,column=3)
-    spacing=ttk.Label(utilitiessectionframe,text="         ")
-    spacing.grid(row=0,column=5)
-    spacing=ttk.Label(utilitiessectionframe,text="         ")
-    spacing.grid(row=0,column=7)
-    spacing=ttk.Label(utilitiessectionframe,text="         ")
-    spacing.grid(row=0,column=9)
-    spacing=ttk.Label(utilitiessectionframe,text="         ")
-    spacing.grid(row=0,column=11)
-    spacing=ttk.Label(utilitiessectionframe,text="         ")
-    spacing.grid(row=0,column=13)
-    spacing=ttk.Label(utilitiessectionframe,text="         ")
-    spacing.grid(row=0,column=15)
-    spacing=ttk.Label(utilitiessectionframe,text="         ")
-    spacing.grid(row=0,column=17)
-    spacing=ttk.Label(utilitiessectionframe,text="         ")
-    spacing.grid(row=0,column=19)
-    spacing=ttk.Label(utilitiessectionframe,text="         ")
-    spacing.grid(row=0,column=21)
-    spacing=ttk.Label(utilitiessectionframe,text="         ")
-    spacing.grid(row=0,column=23)
-    spacing=ttk.Label(utilitiessectionframe,text="         ")
-    spacing.grid(row=0,column=25)
-    spacing=ttk.Label(utilitiessectionframe,text="         ")
-    spacing.grid(row=0,column=27)
-
+    for i in range(1, 30, 2):
+        spacing = ttk.Label(utilitiessectionframe, text="       ")
+        spacing.grid(row=0, column=i)
+    
     ##############################hwinfo########################
     hwinfoicon= PhotoImage(file = r"images\hwinfo-icon-512x512-8ybzko3v.png")
     hwinfoimage = hwinfoicon.subsample(8,8)
-    hwinfourl="https://download.fosshub.com/Protected/expiretime=1673420828;badurl=aHR0cHM6Ly93d3cuZm9zc2h1Yi5jb20vSFdpTkZPLmh0bWw=/5f861ee14a1074acf7d825c276f32ba624ec19341942bd9c155fef16d2305d85/5b969867e5c78775cb187a52/639055157bcd531cda461531/hwi_734.exe"
-    hwinfopath="downloads//hwinfo.exe"
-    hwinfofile="downloads\\hwinfo.exe"
-    hwinfo=ttk.Button(utilitiessectionframe,image=hwinfoimage,text="     HW Info \n\n ★★★★☆ 4",width=10,compound=LEFT,command=lambda: [intcheck(),install(hwinfourl,hwinfopath,hwinfofile,"hwinfo")])
-    hwinfo.grid(row=0,column=2,ipady=30, ipadx=15)
-
+    hwinfo=ttk.Button(utilitiessectionframe,image=hwinfoimage,text="     HW Info \n\n ★★★★☆ 4",width=10,compound=LEFT,command=lambda: [intcheck("REALiX.HWiNFO","HWiNFO")])
     ##############################coretemp########################
     coretempicon= PhotoImage(file = r"images\34454443.png")
     coretempimage = coretempicon.subsample(5,5)
-    coretempurl="https://files01.tchspt.com/temp/Core-Temp-setup.exe"
-    coretemppath="downloads//coretemp.exe"
-    coretempfile="downloads\\coretemp.exe"
-    coretemp=ttk.Button(utilitiessectionframe,image=coretempimage,text="    Core Temp \n\n ★★★★☆ 4",width=10,compound=LEFT,command=lambda: [intcheck(),install(coretempurl,coretemppath,coretempfile,"coretemp")])
-    coretemp.grid(row=0,column=4,ipady=30, ipadx=15)
-
+    coretemp=ttk.Button(utilitiessectionframe,image=coretempimage,text="    Core Temp \n\n ★★★★☆ 4",width=10,compound=LEFT,command=lambda: [intcheck("ALCPU.CoreTemp","CoreTemp")])
     ##############################sevenzip########################
     sevenzipicon= PhotoImage(file = r"images\1280px-7-Zip_Icon.svg.png")
     sevenzipimage = sevenzipicon.subsample(17,17)
-    sevenzipurl="https://www.7-zip.org/a/7z2201-x64.exe"
-    sevenzippath="downloads//7zip.exe"
-    sevenzipfile="downloads\\7zip.exe"
-    sevenzip=ttk.Button(utilitiessectionframe,image=sevenzipimage,text="         7Zip \n\n ★★★★☆ 4.3",width=10,compound=LEFT,command=lambda: [intcheck(),install(sevenzipurl,sevenzippath,sevenzipfile,"sevenzip")])
-    sevenzip.grid(row=0,column=6,ipady=30, ipadx=15)
-
+    sevenzip=ttk.Button(utilitiessectionframe,image=sevenzipimage,text="         7Zip \n\n ★★★★☆ 4.3",width=10,compound=LEFT,command=lambda: [intcheck("7zip.7zip","7zip")])
     ##############################anydesk########################
     anydeskicon= PhotoImage(file = r"images\unnamed.png")
     anydeskimage = anydeskicon.subsample(9,9)
-    anydeskurl="https://download.anydesk.com/AnyDesk.exe"
-    anydeskpath="downloads//anydesk.exe"
-    anydeskfile="downloads\\anydesk.exe"
-    anydesk=ttk.Button(utilitiessectionframe,image=anydeskimage,text="      Anydesk \n\n ★★★★☆ 4.4",width=10,compound=LEFT,command=lambda: [intcheck(),install(anydeskurl,anydeskpath,anydeskfile,"anydesk")])
-    anydesk.grid(row=0,column=8,ipady=30, ipadx=15)
-    
+    anydesk=ttk.Button(utilitiessectionframe,image=anydeskimage,text="      Anydesk \n\n ★★★★☆ 4.4",width=10,compound=LEFT,command=lambda: [intcheck("AnyDeskSoftwareGmbH.AnyDesk","AnyDesk")])
     ##############################cpuz########################
     cpuzicon= PhotoImage(file = r"images\CPU-Z_Icon.svg.png")
     cpuzimage = cpuzicon.subsample(2,2)
-    cpuzurl="https://download.cpuid.com/cpu-z/cpu-z_2.03-en.exe"
-    cpuzpath="downloads//cpuz.exe"
-    cpuzfile="downloads\\cpuz.exe"
-    cpuz=ttk.Button(utilitiessectionframe,image=cpuzimage,text="        CPU-Z \n\n ★★★★☆ 4.5",width=10,compound=LEFT,command=lambda: [intcheck(),install(cpuzurl,cpuzpath,cpuzfile,"cpuz")])
-    cpuz.grid(row=0,column=10,ipady=30, ipadx=15)
-
+    cpuz=ttk.Button(utilitiessectionframe,image=cpuzimage,text="        CPU-Z \n\n ★★★★☆ 4.5",width=10,compound=LEFT,command=lambda: [intcheck("CPUID.CPU-Z","CPU-Z")])
     ##############################etcher########################
     etchericon= PhotoImage(file = r"images\avatar.png")
     etcherimage = etchericon.subsample(4,4)
-    etcherurl="https://github.com/balena-io/etcher/releases/download/v1.13.1/balenaEtcher-Setup-1.13.1.exe"
-    etcherpath="downloads//etcher.exe"
-    etcherfile="downloads\\etcher.exe"
-    etcher=ttk.Button(utilitiessectionframe,image=etcherimage,text="Balena Etcher \n\n ★★★★☆ 4",width=10,compound=LEFT,command=lambda: [intcheck(),install(etcherurl,etcherpath,etcherfile,"etcher")])
-    etcher.grid(row=0,column=12,ipady=30, ipadx=15)
-    
+    etcher=ttk.Button(utilitiessectionframe,image=etcherimage,text="Balena Etcher \n\n ★★★★☆ 4",width=10,compound=LEFT,command=lambda: [intcheck("Balena.Etcher","Balena Etcher")])
     ##############################gpuz########################
     gpuzicon= PhotoImage(file = r"images\gpu_z_icon_by_pitmankeks_de0lyld-fullview.png")
     gpuzimage = gpuzicon.subsample(9,9)
-    gpuzurl="https://files1.majorgeeks.com/10afebdbffcd4742c81a3cb0f6ce4092156b4375/video/GPU-Z.2.52.0.exe"
-    gpuzpath="downloads//gpuz.exe"
-    gpuzfile="downloads\\gpuz.exe"
-    gpuz=ttk.Button(utilitiessectionframe,image=gpuzimage,text="      GPU-Z \n\n ★★★☆☆ 3.6",width=10,compound=LEFT,command=lambda: [intcheck(),install(gpuzurl,gpuzpath,gpuzfile,"gpuz")])
-    gpuz.grid(row=0,column=14,ipady=30, ipadx=15)
-
+    gpuz=ttk.Button(utilitiessectionframe,image=gpuzimage,text="      GPU-Z \n\n ★★★☆☆ 3.6",width=10,compound=LEFT,command=lambda: [intcheck("TechPowerUp.GPU-Z","GPU-Z")])
     ##############################revouninstaller########################
     revouninstallericon= PhotoImage(file = r"images\Revouninstallerpro_icon.png")
     revouninstallerimage = revouninstallericon.subsample(9,9)
-    revouninstallerurl="https://www.revouninstaller.com/start-freeware-download/"
-    revouninstallerpath="downloads//revouninstaller.exe"
-    revouninstallerfile="downloads\\revouninstaller.exe"
-    revouninstaller=ttk.Button(utilitiessectionframe,image=revouninstallerimage,text=" Revo Uninstaller \n\n ★★★☆☆ 3.5",width=12,compound=LEFT,command=lambda: [intcheck(),install(revouninstallerurl,revouninstallerpath,revouninstallerfile,"revouninstaller")])
-    revouninstaller.grid(row=0,column=16,ipady=30, ipadx=15)
-
+    revouninstaller=ttk.Button(utilitiessectionframe,image=revouninstallerimage,text=" Revo Uninstaller \n\n ★★★☆☆ 3.5",width=12,compound=LEFT,command=lambda: [intcheck("RevoUninstaller.RevoUninstaller","Revo Uninstaller")])
     ##############################powertoys########################
     powertoysicon= PhotoImage(file = r"images\2020_PowerToys_Icon.svg.png")
     powertoysimage = powertoysicon.subsample(36,36)
-    powertoysurl="https://github.com/microsoft/PowerToys/releases/download/v0.66.0/PowerToysSetup-0.66.0-x64.exe"
-    powertoyspath="downloads//powertoys.exe"
-    powertoysfile="downloads\\powertoys.exe"
-    powertoys=ttk.Button(utilitiessectionframe,image=powertoysimage,text="      Powertoys \n\n ★★★★☆ 4.5",width=12,compound=LEFT,command=lambda: [intcheck(),install(powertoysurl,powertoyspath,powertoysfile,"powertoys")])
-    powertoys.grid(row=0,column=18,ipady=30, ipadx=15)
-
+    powertoys=ttk.Button(utilitiessectionframe,image=powertoysimage,text="      Powertoys \n\n ★★★★☆ 4.5",width=12,compound=LEFT,command=lambda: [intcheck("Microsoft.PowerToys","Microsoft PowerToys")])
     ##############################autohotkey########################
     autohotkeyicon= PhotoImage(file = r"images\sBnPQRG.png")
     autohotkeyimage = autohotkeyicon.subsample(5,5)
-    autohotkeyurl="https://github.com/AutoHotkey/AutoHotkey/releases/download/v2.0.2/AutoHotkey_2.0.2_setup.exe"
-    autohotkeypath="downloads//autohotkey.exe"
-    autohotkeyfile="downloads\\autohotkey.exe"
-    autohotkey=ttk.Button(utilitiessectionframe,image=autohotkeyimage,text="    Autohotkey \n\n ★★★★☆ 4.4",width=12,compound=LEFT,command=lambda: [intcheck(),install(autohotkeyurl,autohotkeypath,autohotkeyfile,"autohotkey")])
-    autohotkey.grid(row=0,column=20,ipady=30, ipadx=15)
-
+    autohotkey=ttk.Button(utilitiessectionframe,image=autohotkeyimage,text="    Autohotkey \n\n ★★★★☆ 4.4",width=12,compound=LEFT,command=lambda: [intcheck("Lexikos.AutoHotkey","AutoHotkey")])
     ##############################bitwarden########################
     bitwardenicon= PhotoImage(file = r"images\1200x630bb.png")
     bitwardenimage = bitwardenicon.subsample(11,11)
-    bitwardenurl="https://github.com/bitwarden/clients/releases/download/desktop-v2023.1.1/Bitwarden-Installer-2023.1.1.exe"
-    bitwardenpath="downloads//bitwarden.exe"
-    bitwardenfile="downloads\\bitwarden.exe"
-    bitwarden=ttk.Button(utilitiessectionframe,image=bitwardenimage,text="     Bitwarden \n\n ★★★★☆ 4",width=12,compound=LEFT,command=lambda: [intcheck(),install(bitwardenurl,bitwardenpath,bitwardenfile,"bitwarden")])
+    bitwarden=ttk.Button(utilitiessectionframe,image=bitwardenimage,text="     Bitwarden \n\n ★★★★☆ 4",width=12,compound=LEFT,command=lambda: [intcheck("Bitwarden.Bitwarden","Bitwarden")])
     bitwarden.grid(row=0,column=22,ipady=30, ipadx=15)
-
     ##############################everythingsearch########################
     everythingsearchicon= PhotoImage(file = r"images\dbc1fc0d2b9e238f5863eb19ef214629.png")
     everythingsearchimage = everythingsearchicon.subsample(5,5)
-    everythingsearchurl="https://www.voidtools.com/Everything-1.4.1.1022.x86-Setup.exe"
-    everythingsearchpath="downloads//everythingsearch.exe"
-    everythingsearchfile="downloads\\everythingsearch.exe"
-    everythingsearch=ttk.Button(utilitiessectionframe,image=everythingsearchimage,text="Everything search \n\n ★★★★☆ 4",width=14,compound=LEFT,command=lambda: [intcheck(),install(everythingsearchurl,everythingsearchpath,everythingsearchfile,"everythingsearch")])
-    everythingsearch.grid(row=0,column=24,ipady=30, ipadx=15)
-
+    everythingsearch=ttk.Button(utilitiessectionframe,image=everythingsearchimage,text="Everything search \n\n ★★★★☆ 4",width=14,compound=LEFT,command=lambda: [intcheck("voidtools.Everything","Everything Search")])
     ################passwordmanager###########
     passwordmanagericon= PhotoImage(file = r"images\b8ac5e46-1a16-448b-9a12-bf597a95d173.png")
     passwordmanagerimage = passwordmanagericon.subsample(11,11)
     passwordmanagerurl="https://github.com/VarunAdhityaGB/Password-Manager-GUI/releases/download/v.1.2/Password_Manager_v.1.2_Setup.exe"
     passwordmanagerpath="downloads//passwordmanager.exe"
     passwordmanagerfile="downloads\\passwordmanager.exe"
-    passwordmanagerutility=ttk.Button(utilitiessectionframe,image=passwordmanagerimage,text="Password Manager \n\n ★★★★☆ 4",width=15,compound=LEFT,command=lambda: [intcheck(),install(passwordmanagerurl,passwordmanagerpath,passwordmanagerfile,"passwordmanager")])
-    passwordmanagerutility.grid(row=0,column=26,ipady=30, ipadx=15)
-
+    passwordmanager=ttk.Button(utilitiessectionframe,image=passwordmanagerimage,text="Password Manager \n\n ★★★★☆ 4",width=15,compound=LEFT,command=lambda: [intcheck(),urlinstall(passwordmanagerurl,passwordmanagerpath,passwordmanagerfile,"passwordmanager")])
     ################flux###########
     fluxicon= PhotoImage(file = r"images\flux-icon-big.png")
     fluximage = fluxicon.subsample(5,5)
-    fluxurl="https://justgetflux.com/dlwin.html"
-    fluxpath="downloads//flux.exe"
-    fluxfile="downloads\\flux.exe"
-    fluxutility=ttk.Button(utilitiessectionframe,image=fluximage,text="        Flux \n\n ★★★★☆ 4.8",width=12,compound=LEFT,command=lambda: [intcheck(),install(fluxurl,fluxpath,fluxfile,"flux")])
-    fluxutility.grid(row=0,column=28,ipady=30, ipadx=15)
+    flux=ttk.Button(utilitiessectionframe,image=fluximage,text="        Flux \n\n ★★★★☆ 4.8",width=12,compound=LEFT,command=lambda: [intcheck("flux.flux","flux")])
 
+    ##########placement of dev apps##########
+    utillists= ["dummy",hwinfo,coretemp,sevenzip,anydesk,cpuz,etcher,gpuz,revouninstaller,powertoys,autohotkey,bitwarden,everythingsearch,passwordmanager,flux]
+
+    for i in range(2, len(utillists)*2, 2):
+        if i/2 < len(utillists):
+            button = utillists[i//2]
+            button.grid(row=0, column=i, ipady=30, ipadx=15)
+
+    #####################################spacing for magic :} ##########################################   
     spacing=ttk.Label(second_frame,text="                                                                                                                                                                                                                                                                                                                                            ")
     spacing.grid(row=100,column=0)
     
