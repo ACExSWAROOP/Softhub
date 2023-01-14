@@ -72,24 +72,21 @@ def mainwindow():
     s= ttk.Style()
     s.configure('.', font=('Segoe UI Variable', 10))
     mainsplash.withdraw()
-    """
     screenwidth = main.winfo_screenwidth()
     screenheight = main.winfo_screenheight()
-    app_width = screenwidth
-    app_height = screenheight
-    """
-    main.geometry("1024x512+75+75")
+    app_height = int(screenheight) - 48
+    main.geometry(f'{screenwidth}x{app_height}+0+0')
     main.title("Softhub")
     main.tk.call('wm', 'iconphoto', main._w, ImageTk.PhotoImage(file='images\softhub.ico'))
     main.attributes("-alpha", 0.96)
     main.overrideredirect(True)
     main.minimized = False 
     main.maximized = False    
-    LGRAY = '#3e4042' # button color effects in the title bar (Hex color)
-    RGRAY = '#1c1c1c' # title bar color                       (Hex color)
-    DGRAY = '#1c1c1c' # window background color               (Hex color)
+    LGRAY = '#3e4042' # button color 
+    RGRAY = '#1c1c1c' # title bar color  
+    DGRAY = '#1c1c1c' # window background color 
     title_bar = Frame(main, bg=RGRAY, relief='raised', bd=0,highlightthickness=0)
-    main.attributes("-alpha", 0.95)
+
     def set_appwindow(mainWindow): # to display the window icon on the taskbar, 
                                # even when using main.overrideredirect(True
     # Some WindowsOS styles, required for task bar integration
@@ -108,7 +105,7 @@ def mainwindow():
         
 
     def minimize_me():
-        main.attributes("-alpha",0) # so you can't see the window when is minimized
+        main.attributes("-alpha",0) # so you can't see the window when its minimized
         main.minimized = True       
 
 
@@ -127,22 +124,20 @@ def mainwindow():
             expand_button.config(text="  🗗  ")
             main.geometry(f"{main.winfo_screenwidth()}x{main.winfo_screenheight()}+0+0")
             main.maximized = not main.maximized 
-            # now it's maximized
+            #maximized
         
         else: # if the window was maximized
             expand_button.config(text="  ◻  ")
             main.geometry(main.normal_size)
             main.maximized = not main.maximized
-            # now it is not maximized
-
-    # put a close button on the title bar
+            #not maximized
     
     close_button = Button(title_bar, text='  ✕  ', command=main.destroy,bg=RGRAY,padx=2,pady=2,font=("calibri", 13),bd=0,fg='white',highlightthickness=0)
     expand_button = Button(title_bar, text='  ◻  ', command=maximize_me,bg=RGRAY,padx=2,pady=2,bd=0,fg='white',font=("calibri", 13),highlightthickness=0)
     minimize_button = Button(title_bar, text='  —  ',command=minimize_me,bg=RGRAY,padx=2,pady=2,bd=0,fg='white',font=("calibri", 13),highlightthickness=0)
     title_bar_title = Label(title_bar, text="Softhub", bg=RGRAY,bd=0,fg='white',font=("helvetica", 10),highlightthickness=0)
 
-    # a frame for the main area of the window, this is where the actual app will go
+    # main frame
     window = Frame(main, bg=DGRAY,highlightthickness=0)
 
     # pack the widgets
@@ -155,63 +150,55 @@ def mainwindow():
     label = Label(title_bar,image=appicon)
     label.pack(side=LEFT)
     title_bar_title.pack(side=LEFT, padx=10)
-    searchicon= PhotoImage(file = r"images\Screenshot 2023-01-12 235851.png")
-    label2 = Label(title_bar,image=searchicon)
-    label2.pack(side=LEFT,padx=235)
-    window.pack(expand=1, fill=BOTH) # replace this with your main Canvas/Frame/etc.
-    #xwin=None
-    #ywin=None
-    # bind title bar motion to the move window function
+    window.pack(expand=1, fill=BOTH) 
+    searchentry= ttk.Entry(title_bar,width=30)
+    searchentry.place(relx=0.41,rely=0.24)
+    searchicon= PhotoImage(file = r"images\search.png")
+    searchimage = searchicon.subsample(40,40)
+    searchbutton =ttk.Button(title_bar,image=searchimage)
+    searchbutton.place(relx=0.605,rely=0.24)
+
+    # binding title bar motion to the move window fn.
 
     def changex_on_hovering(event):
         global close_button
         close_button['bg']='red' 
         
-        
     def returnx_to_normalstate(event):
         global close_button
         close_button['bg']=RGRAY
         
-
     def change_size_on_hovering(event):
         global expand_button
         expand_button['bg']=LGRAY
-        
         
     def return_size_on_hovering(event):
         global expand_button
         expand_button['bg']=RGRAY
         
-
     def changem_size_on_hovering(event):
         global minimize_button
         minimize_button['bg']=LGRAY
         
-        
     def returnm_size_on_hovering(event):
         global minimize_button
         minimize_button['bg']=RGRAY
-        
-
+    
     def get_pos(event): # this is executed when the title bar is clicked to move the window
         if main.maximized == False:
             xwin = main.winfo_x()
             ywin = main.winfo_y()
             startx = event.x_root
             starty = event.y_root
-
             ywin = ywin - starty
             xwin = xwin - startx
 
-            
             def move_window(event): # runs when window is dragged
                 main.config(cursor="fleur")
                 main.geometry(f'+{event.x_root + xwin}+{event.y_root + ywin}')
 
-
             def release_window(event): # runs when window is released
                 main.config(cursor="arrow")
-                
                 
             title_bar.bind('<B1-Motion>', move_window)
             title_bar.bind('<ButtonRelease-1>', release_window)
@@ -235,7 +222,6 @@ def mainwindow():
     # resize the window width
     resizex_widget = Frame(window,bg=DGRAY,cursor='sb_h_double_arrow')
     resizex_widget.pack(side=RIGHT,ipadx=2,fill=Y)
-
 
     def resizex(event):
         xwin = main.winfo_x()
@@ -290,7 +276,7 @@ def mainwindow():
     sec.pack(fill=X,side=BOTTOM)
 
     # Create A Canvas
-    my_canvas = Canvas(window)
+    my_canvas = Canvas(window)      
     my_canvas.pack(side=LEFT,fill=BOTH,expand=1)
 
     # Add A Scrollbars to Canvas
@@ -358,7 +344,7 @@ def mainwindow():
     ##############brave###############
 
     braveicon= PhotoImage(file = r"images\Brave_lion_icon.svg.png")
-    braveimage = braveicon.subsample(20,20)
+    braveimage = braveicon.subsample(21,21)
     braveurl="https://laptop-updates.brave.com/latest/winx64"
     bravepath="downloads//brave.exe"
     bravefile="downloads\\brave.exe"
@@ -398,7 +384,7 @@ def mainwindow():
     ##############vivaldi browser###############
 
     vivaldiicon= PhotoImage(file = r"images\Vivaldi_web_browser_logo.svg.png")
-    vivaldiimage = vivaldiicon.subsample(14,14)
+    vivaldiimage = vivaldiicon.subsample(15,15)
     vivaldiurl="https://downloads.vivaldi.com/stable/Vivaldi.5.6.2867.50.x64.exe"
     vivaldipath="downloads//vivaldi.exe"
     vivaldifile="downloads\\vivaldi.exe"
@@ -449,6 +435,7 @@ def mainwindow():
     communicationsection=ttk.Label(communicationsectionframe,text="Communication",font=("Segou UI variable",18))
     communicationsection.grid(row=0,column=0,pady=15,padx=15)
 
+    
     spacing=ttk.Label(communicationsectionframe,text="         ")
     spacing.grid(row=0,column=3)
     spacing=ttk.Label(communicationsectionframe,text="         ")
@@ -678,14 +665,27 @@ def mainwindow():
     sublime=ttk.Button(developmentsectionframe,image=sublimeimage,text="    Sublime",width=10,compound=LEFT,command=lambda: [intcheck(),install(sublimeurl,sublimepath,sublimefile,"sublime")])
     sublime.grid(row=0,column=20,ipady=30, ipadx=15)
 
+    utilities_frame = Frame(second_frame)
+    utilities_frame.grid(row=3 ,column=0,sticky=E+W)
 
+    utilities_frame2 = Frame(utilities_frame)
+    utilities_frame2.pack(fill=X,side=BOTTOM)
+
+    utilitiescanvas = Canvas(utilities_frame)
+    utilitiescanvas.pack(side=LEFT,fill=X,expand=1)
+
+    x_scrollbar = ttk.Scrollbar(utilities_frame2,orient=HORIZONTAL,command=utilitiescanvas.xview)
+    x_scrollbar.pack(side=BOTTOM,fill=X)
+    utilitiescanvas.configure(xscrollcommand=x_scrollbar.set)
+    utilitiescanvas.bind("<Configure>",lambda e: utilitiescanvas.config(scrollregion= utilitiescanvas.bbox(ALL)))
+    utilities_frame3 = Frame(utilitiescanvas)
+    utilitiescanvas.create_window((100,100),window= utilities_frame3, anchor="nw")
     #############################################################utilities##################################################
+    utilitiessectionframe= Frame(utilities_frame3)
+    utilitiessectionframe.grid(row=0,column=0,pady=15,padx=15)
 
-    utilitiessection=ttk.Label(second_frame,text="Utilities",font=("Segou UI variable",15))
-    utilitiessection.grid(row=6,column=0,pady=15,padx=15)
-
-    utilitiessectionframe= Frame(second_frame)
-    utilitiessectionframe.grid(row=7,column=0,pady=15,padx=15)
+    utilitiessection=ttk.Label(utilitiessectionframe,text="Utilities",font=("Segou UI variable",18))
+    utilitiessection.grid(row=0,column=0,pady=15,padx=15)
 
     spacing=ttk.Label(utilitiessectionframe,text="         ")
     spacing.grid(row=0,column=1)
@@ -700,134 +700,151 @@ def mainwindow():
     spacing=ttk.Label(utilitiessectionframe,text="         ")
     spacing.grid(row=0,column=11)
     spacing=ttk.Label(utilitiessectionframe,text="         ")
-    spacing.grid(row=1,column=0)
+    spacing.grid(row=0,column=13)
+    spacing=ttk.Label(utilitiessectionframe,text="         ")
+    spacing.grid(row=0,column=15)
+    spacing=ttk.Label(utilitiessectionframe,text="         ")
+    spacing.grid(row=0,column=17)
+    spacing=ttk.Label(utilitiessectionframe,text="         ")
+    spacing.grid(row=0,column=19)
+    spacing=ttk.Label(utilitiessectionframe,text="         ")
+    spacing.grid(row=0,column=21)
+    spacing=ttk.Label(utilitiessectionframe,text="         ")
+    spacing.grid(row=0,column=23)
+    spacing=ttk.Label(utilitiessectionframe,text="         ")
+    spacing.grid(row=0,column=25)
+    spacing=ttk.Label(utilitiessectionframe,text="         ")
+    spacing.grid(row=0,column=27)
 
     ##############################hwinfo########################
     hwinfoicon= PhotoImage(file = r"images\hwinfo-icon-512x512-8ybzko3v.png")
-    hwinfoimage = hwinfoicon.subsample(12,12)
+    hwinfoimage = hwinfoicon.subsample(8,8)
     hwinfourl="https://download.fosshub.com/Protected/expiretime=1673420828;badurl=aHR0cHM6Ly93d3cuZm9zc2h1Yi5jb20vSFdpTkZPLmh0bWw=/5f861ee14a1074acf7d825c276f32ba624ec19341942bd9c155fef16d2305d85/5b969867e5c78775cb187a52/639055157bcd531cda461531/hwi_734.exe"
     hwinfopath="downloads//hwinfo.exe"
     hwinfofile="downloads\\hwinfo.exe"
-    hwinfo=ttk.Button(utilitiessectionframe,image=hwinfoimage,text="HW Info",width=10,compound=LEFT,command=lambda: [intcheck(),install(hwinfourl,hwinfopath,hwinfofile,"hwinfo")])
-    hwinfo.grid(row=0,column=0)
+    hwinfo=ttk.Button(utilitiessectionframe,image=hwinfoimage,text="     HW Info \n\n ★★★★☆ 4",width=10,compound=LEFT,command=lambda: [intcheck(),install(hwinfourl,hwinfopath,hwinfofile,"hwinfo")])
+    hwinfo.grid(row=0,column=2,ipady=30, ipadx=15)
 
     ##############################coretemp########################
     coretempicon= PhotoImage(file = r"images\34454443.png")
-    coretempimage = coretempicon.subsample(7,7)
+    coretempimage = coretempicon.subsample(5,5)
     coretempurl="https://files01.tchspt.com/temp/Core-Temp-setup.exe"
     coretemppath="downloads//coretemp.exe"
     coretempfile="downloads\\coretemp.exe"
-    coretemp=ttk.Button(utilitiessectionframe,image=coretempimage,text="Core Temp",width=10,compound=LEFT,command=lambda: [intcheck(),install(coretempurl,coretemppath,coretempfile,"coretemp")])
-    coretemp.grid(row=0,column=2)
+    coretemp=ttk.Button(utilitiessectionframe,image=coretempimage,text="    Core Temp \n\n ★★★★☆ 4",width=10,compound=LEFT,command=lambda: [intcheck(),install(coretempurl,coretemppath,coretempfile,"coretemp")])
+    coretemp.grid(row=0,column=4,ipady=30, ipadx=15)
 
     ##############################sevenzip########################
-    sevenzipicon= PhotoImage(file = r"images\png-clipart-logos-01-icons-and-7zip-512-7zip-icon-thumbnail.png")
-    sevenzipimage = sevenzipicon.subsample(8,8)
+    sevenzipicon= PhotoImage(file = r"images\1280px-7-Zip_Icon.svg.png")
+    sevenzipimage = sevenzipicon.subsample(17,17)
     sevenzipurl="https://www.7-zip.org/a/7z2201-x64.exe"
     sevenzippath="downloads//7zip.exe"
     sevenzipfile="downloads\\7zip.exe"
-    sevenzip=ttk.Button(utilitiessectionframe,image=sevenzipimage,text="7Zip",width=10,compound=LEFT,command=lambda: [intcheck(),install(sevenzipurl,sevenzippath,sevenzipfile,"sevenzip")])
-    sevenzip.grid(row=0,column=4)
+    sevenzip=ttk.Button(utilitiessectionframe,image=sevenzipimage,text="         7Zip \n\n ★★★★☆ 4.3",width=10,compound=LEFT,command=lambda: [intcheck(),install(sevenzipurl,sevenzippath,sevenzipfile,"sevenzip")])
+    sevenzip.grid(row=0,column=6,ipady=30, ipadx=15)
 
     ##############################anydesk########################
     anydeskicon= PhotoImage(file = r"images\unnamed.png")
-    anydeskimage = anydeskicon.subsample(12,12)
+    anydeskimage = anydeskicon.subsample(9,9)
     anydeskurl="https://download.anydesk.com/AnyDesk.exe"
     anydeskpath="downloads//anydesk.exe"
     anydeskfile="downloads\\anydesk.exe"
-    anydesk=ttk.Button(utilitiessectionframe,image=anydeskimage,text="Anydesk",width=10,compound=LEFT,command=lambda: [intcheck(),install(anydeskurl,anydeskpath,anydeskfile,"anydesk")])
-    anydesk.grid(row=0,column=6)
+    anydesk=ttk.Button(utilitiessectionframe,image=anydeskimage,text="      Anydesk \n\n ★★★★☆ 4.4",width=10,compound=LEFT,command=lambda: [intcheck(),install(anydeskurl,anydeskpath,anydeskfile,"anydesk")])
+    anydesk.grid(row=0,column=8,ipady=30, ipadx=15)
     
     ##############################cpuz########################
     cpuzicon= PhotoImage(file = r"images\CPU-Z_Icon.svg.png")
-    cpuzimage = cpuzicon.subsample(3,3)
+    cpuzimage = cpuzicon.subsample(2,2)
     cpuzurl="https://download.cpuid.com/cpu-z/cpu-z_2.03-en.exe"
     cpuzpath="downloads//cpuz.exe"
     cpuzfile="downloads\\cpuz.exe"
-    cpuz=ttk.Button(utilitiessectionframe,image=cpuzimage,text="CPU-Z",width=10,compound=LEFT,command=lambda: [intcheck(),install(cpuzurl,cpuzpath,cpuzfile,"cpuz")])
-    cpuz.grid(row=0,column=8)
+    cpuz=ttk.Button(utilitiessectionframe,image=cpuzimage,text="        CPU-Z \n\n ★★★★☆ 4.5",width=10,compound=LEFT,command=lambda: [intcheck(),install(cpuzurl,cpuzpath,cpuzfile,"cpuz")])
+    cpuz.grid(row=0,column=10,ipady=30, ipadx=15)
 
     ##############################etcher########################
     etchericon= PhotoImage(file = r"images\avatar.png")
-    etcherimage = etchericon.subsample(6,6)
+    etcherimage = etchericon.subsample(4,4)
     etcherurl="https://github.com/balena-io/etcher/releases/download/v1.13.1/balenaEtcher-Setup-1.13.1.exe"
     etcherpath="downloads//etcher.exe"
     etcherfile="downloads\\etcher.exe"
-    etcher=ttk.Button(utilitiessectionframe,image=etcherimage,text="Balena Etcher",width=10,compound=LEFT,command=lambda: [intcheck(),install(etcherurl,etcherpath,etcherfile,"etcher")])
-    etcher.grid(row=0,column=10)
+    etcher=ttk.Button(utilitiessectionframe,image=etcherimage,text="Balena Etcher \n\n ★★★★☆ 4",width=10,compound=LEFT,command=lambda: [intcheck(),install(etcherurl,etcherpath,etcherfile,"etcher")])
+    etcher.grid(row=0,column=12,ipady=30, ipadx=15)
     
     ##############################gpuz########################
     gpuzicon= PhotoImage(file = r"images\gpu_z_icon_by_pitmankeks_de0lyld-fullview.png")
-    gpuzimage = gpuzicon.subsample(12,12)
+    gpuzimage = gpuzicon.subsample(9,9)
     gpuzurl="https://files1.majorgeeks.com/10afebdbffcd4742c81a3cb0f6ce4092156b4375/video/GPU-Z.2.52.0.exe"
     gpuzpath="downloads//gpuz.exe"
     gpuzfile="downloads\\gpuz.exe"
-    gpuz=ttk.Button(utilitiessectionframe,image=gpuzimage,text="GPU-Z",width=10,compound=LEFT,command=lambda: [intcheck(),install(gpuzurl,gpuzpath,gpuzfile,"gpuz")])
-    gpuz.grid(row=0,column=12)
+    gpuz=ttk.Button(utilitiessectionframe,image=gpuzimage,text="      GPU-Z \n\n ★★★☆☆ 3.6",width=10,compound=LEFT,command=lambda: [intcheck(),install(gpuzurl,gpuzpath,gpuzfile,"gpuz")])
+    gpuz.grid(row=0,column=14,ipady=30, ipadx=15)
 
     ##############################revouninstaller########################
     revouninstallericon= PhotoImage(file = r"images\Revouninstallerpro_icon.png")
-    revouninstallerimage = revouninstallericon.subsample(12,12)
+    revouninstallerimage = revouninstallericon.subsample(9,9)
     revouninstallerurl="https://www.revouninstaller.com/start-freeware-download/"
     revouninstallerpath="downloads//revouninstaller.exe"
     revouninstallerfile="downloads\\revouninstaller.exe"
-    revouninstaller=ttk.Button(utilitiessectionframe,image=revouninstallerimage,text="Revo Uninstaller",width=12,compound=LEFT,command=lambda: [intcheck(),install(revouninstallerurl,revouninstallerpath,revouninstallerfile,"revouninstaller")])
-    revouninstaller.grid(row=2,column=0)
+    revouninstaller=ttk.Button(utilitiessectionframe,image=revouninstallerimage,text=" Revo Uninstaller \n\n ★★★☆☆ 3.5",width=12,compound=LEFT,command=lambda: [intcheck(),install(revouninstallerurl,revouninstallerpath,revouninstallerfile,"revouninstaller")])
+    revouninstaller.grid(row=0,column=16,ipady=30, ipadx=15)
 
     ##############################powertoys########################
     powertoysicon= PhotoImage(file = r"images\2020_PowerToys_Icon.svg.png")
-    powertoysimage = powertoysicon.subsample(48,48)
+    powertoysimage = powertoysicon.subsample(36,36)
     powertoysurl="https://github.com/microsoft/PowerToys/releases/download/v0.66.0/PowerToysSetup-0.66.0-x64.exe"
     powertoyspath="downloads//powertoys.exe"
     powertoysfile="downloads\\powertoys.exe"
-    powertoys=ttk.Button(utilitiessectionframe,image=powertoysimage,text="Powertoys",width=12,compound=LEFT,command=lambda: [intcheck(),install(powertoysurl,powertoyspath,powertoysfile,"powertoys")])
-    powertoys.grid(row=2,column=2)
+    powertoys=ttk.Button(utilitiessectionframe,image=powertoysimage,text="      Powertoys \n\n ★★★★☆ 4.5",width=12,compound=LEFT,command=lambda: [intcheck(),install(powertoysurl,powertoyspath,powertoysfile,"powertoys")])
+    powertoys.grid(row=0,column=18,ipady=30, ipadx=15)
 
     ##############################autohotkey########################
     autohotkeyicon= PhotoImage(file = r"images\sBnPQRG.png")
-    autohotkeyimage = autohotkeyicon.subsample(6,6)
+    autohotkeyimage = autohotkeyicon.subsample(5,5)
     autohotkeyurl="https://www.autohotkey.com/download/ahk-v2.exe"
     autohotkeypath="downloads//autohotkey.exe"
     autohotkeyfile="downloads\\autohotkey.exe"
-    autohotkey=ttk.Button(utilitiessectionframe,image=autohotkeyimage,text="Autohotkey",width=12,compound=LEFT,command=lambda: [intcheck(),install(autohotkeyurl,autohotkeypath,autohotkeyfile,"autohotkey")])
-    autohotkey.grid(row=2,column=4)
+    autohotkey=ttk.Button(utilitiessectionframe,image=autohotkeyimage,text="    Autohotkey \n\n ★★★★☆ 4.4",width=12,compound=LEFT,command=lambda: [intcheck(),install(autohotkeyurl,autohotkeypath,autohotkeyfile,"autohotkey")])
+    autohotkey.grid(row=0,column=20,ipady=30, ipadx=15)
 
     ##############################bitwarden########################
     bitwardenicon= PhotoImage(file = r"images\1200x630bb.png")
-    bitwardenimage = bitwardenicon.subsample(16,16)
+    bitwardenimage = bitwardenicon.subsample(11,11)
     bitwardenurl="https://objects.githubusercontent.com/github-production-release-asset-2e65be/53538899/97993fce-af92-400b-b5c8-c77f2382da49?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAIWNJYAX4CSVEH53A%2F20230110%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20230110T182412Z&X-Amz-Expires=300&X-Amz-Signature=838086e218d4425ad8ddc247822e0a0b6d6c37230c36f91a9d96444bdef95bf8&X-Amz-SignedHeaders=host&actor_id=112751363&key_id=0&repo_id=53538899&response-content-disposition=attachment%3B%20filename%3DBitwarden-Installer-2022.12.0.exe&response-content-type=application%2Foctet-stream"
     bitwardenpath="downloads//bitwarden.exe"
     bitwardenfile="downloads\\bitwarden.exe"
-    bitwarden=ttk.Button(utilitiessectionframe,image=bitwardenimage,text="Bitwarden",width=12,compound=LEFT,command=lambda: [intcheck(),install(bitwardenurl,bitwardenpath,bitwardenfile,"bitwarden")])
-    bitwarden.grid(row=2,column=6)
+    bitwarden=ttk.Button(utilitiessectionframe,image=bitwardenimage,text="     Bitwarden \n\n ★★★★☆ 4",width=12,compound=LEFT,command=lambda: [intcheck(),install(bitwardenurl,bitwardenpath,bitwardenfile,"bitwarden")])
+    bitwarden.grid(row=0,column=22,ipady=30, ipadx=15)
 
     ##############################everythingsearch########################
     everythingsearchicon= PhotoImage(file = r"images\dbc1fc0d2b9e238f5863eb19ef214629.png")
-    everythingsearchimage = everythingsearchicon.subsample(6,6)
+    everythingsearchimage = everythingsearchicon.subsample(5,5)
     everythingsearchurl="https://www.voidtools.com/Everything-1.4.1.1022.x86-Setup.exe"
     everythingsearchpath="downloads//everythingsearch.exe"
     everythingsearchfile="downloads\\everythingsearch.exe"
-    everythingsearch=ttk.Button(utilitiessectionframe,image=everythingsearchimage,text="Everything search",width=14,compound=LEFT,command=lambda: [intcheck(),install(everythingsearchurl,everythingsearchpath,everythingsearchfile,"everythingsearch")])
-    everythingsearch.grid(row=2,column=8)
+    everythingsearch=ttk.Button(utilitiessectionframe,image=everythingsearchimage,text="Everything search \n\n ★★★★☆ 4",width=14,compound=LEFT,command=lambda: [intcheck(),install(everythingsearchurl,everythingsearchpath,everythingsearchfile,"everythingsearch")])
+    everythingsearch.grid(row=0,column=24,ipady=30, ipadx=15)
 
     ################passwordmanager###########
     passwordmanagericon= PhotoImage(file = r"images\b8ac5e46-1a16-448b-9a12-bf597a95d173.png")
-    passwordmanagerimage = passwordmanagericon.subsample(14,14)
+    passwordmanagerimage = passwordmanagericon.subsample(11,11)
     passwordmanagerurl="https://github.com/VarunAdhityaGB/Password-Manager-GUI/releases/download/v.1.2/Password_Manager_v.1.2_Setup.exe"
     passwordmanagerpath="downloads//passwordmanager.exe"
     passwordmanagerfile="downloads\\passwordmanager.exe"
-    passwordmanagerutility=ttk.Button(utilitiessectionframe,image=passwordmanagerimage,text="Password Manager",width=15,compound=LEFT,command=lambda: [intcheck(),install(passwordmanagerurl,passwordmanagerpath,passwordmanagerfile,"passwordmanager")])
-    passwordmanagerutility.grid(row=2,column=10)
+    passwordmanagerutility=ttk.Button(utilitiessectionframe,image=passwordmanagerimage,text="Password Manager \n\n ★★★★☆ 4",width=15,compound=LEFT,command=lambda: [intcheck(),install(passwordmanagerurl,passwordmanagerpath,passwordmanagerfile,"passwordmanager")])
+    passwordmanagerutility.grid(row=0,column=26,ipady=30, ipadx=15)
 
     ################flux###########
     fluxicon= PhotoImage(file = r"images\flux-icon-big.png")
-    fluximage = fluxicon.subsample(6,6)
+    fluximage = fluxicon.subsample(5,5)
     fluxurl="https://justgetflux.com/dlwin.html"
     fluxpath="downloads//flux.exe"
     fluxfile="downloads\\flux.exe"
-    fluxutility=ttk.Button(utilitiessectionframe,image=fluximage,text="Flux",width=12,compound=LEFT,command=lambda: [intcheck(),install(fluxurl,fluxpath,fluxfile,"flux")])
-    fluxutility.grid(row=2,column=12)
+    fluxutility=ttk.Button(utilitiessectionframe,image=fluximage,text="        Flux \n\n ★★★★☆ 4.8",width=12,compound=LEFT,command=lambda: [intcheck(),install(fluxurl,fluxpath,fluxfile,"flux")])
+    fluxutility.grid(row=0,column=28,ipady=30, ipadx=15)
 
+    spacing=ttk.Label(second_frame,text="                                                                                                                                                                                                                                                                                                                                            ")
+    spacing.grid(row=100,column=0)
+    
     main.mainloop()
 
 mainsplash.after(3000, mainwindow)
