@@ -1,4 +1,5 @@
 from tkinter import *
+import urllib
 from urllib import request  
 from PIL import Image, ImageTk
 from tkinter import messagebox
@@ -34,17 +35,22 @@ def install(url,path,file,appname):
     text="do you want to install "+appname+"?"
     x = messagebox.askyesno("do you want to install this application?",text )
     while x == 1:
-        req = request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0;Win64)',
-           'Accept-Language': 'en-US,en;q=0.8',
-           'Accept-Encoding': 'gzip,deflate,sdch',
-           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-           'Connection': 'keep-alive'
-          })
-        request.urlretrieve(req.full_url, path)
-        """response = request.urlretrieve(url,path)
-        """
-        os.system(file)
-        break
+        
+        try:
+            req = request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0;Win64)',
+            'Accept-Language': 'en-US,en;q=0.8',
+            'Accept-Encoding': 'gzip,deflate,sdch',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Connection': 'keep-alive'
+            })
+            x = messagebox.showinfo("Downloading","wait until the app is downloaded")
+            request.urlretrieve(req.full_url, path)
+            os.system(file)
+            break
+        except urllib.error.HTTPError:
+            print(appname)
+            x = messagebox.showinfo("sorry for the inconvenience","sorry for the technical problem.please try again later. :(")
+
 
 mainsplash = Tk()
 sv.set_theme("dark")
@@ -157,7 +163,8 @@ def mainwindow():
     searchimage = searchicon.subsample(40,40)
     searchbutton =ttk.Button(title_bar,image=searchimage)
     searchbutton.place(relx=0.605,rely=0.24)
-
+    status=ttk.Label(title_bar,text="v.0.1.Beta")
+    status.place(relx=0.82,rely=0.35)
     # binding title bar motion to the move window fn.
 
     def changex_on_hovering(event):
@@ -456,7 +463,7 @@ def mainwindow():
 
     discordicon= PhotoImage(file = r"images\636e0a6a49cf127bf92de1e2_icon_clyde_blurple_RGB.png")
     discordimage = discordicon.subsample(8,8)
-    discordurl="https://sp-downloads.digitaltrends.com/eca/be8/6b6c0b20c6314a005ffa234ed54d4e2f24/DiscordSetup.exe?signature=c5b5bd3297e936683e09721f070bfb92&expires=1673401556&url=https%3A%2F%2Fdownloads.digitaltrends.com%2Fdiscord%2Fwindows&filename=DiscordSetup.exe" 
+    discordurl="https://discordapp.com/api/download?platform=win" 
     discordpath="downloads//discord.exe"
     discordfile="downloads\\discord.exe"
     discord=ttk.Button(communicationsectionframe,image=discordimage,text="      Discord \n\n ★★★★☆ 4.5",width=9,compound=LEFT,command=lambda: [intcheck(),install(discordurl,discordpath,discordfile,"discord")])
@@ -800,7 +807,7 @@ def mainwindow():
     ##############################autohotkey########################
     autohotkeyicon= PhotoImage(file = r"images\sBnPQRG.png")
     autohotkeyimage = autohotkeyicon.subsample(5,5)
-    autohotkeyurl="https://www.autohotkey.com/download/ahk-v2.exe"
+    autohotkeyurl="https://github.com/AutoHotkey/AutoHotkey/releases/download/v2.0.2/AutoHotkey_2.0.2_setup.exe"
     autohotkeypath="downloads//autohotkey.exe"
     autohotkeyfile="downloads\\autohotkey.exe"
     autohotkey=ttk.Button(utilitiessectionframe,image=autohotkeyimage,text="    Autohotkey \n\n ★★★★☆ 4.4",width=12,compound=LEFT,command=lambda: [intcheck(),install(autohotkeyurl,autohotkeypath,autohotkeyfile,"autohotkey")])
@@ -809,7 +816,7 @@ def mainwindow():
     ##############################bitwarden########################
     bitwardenicon= PhotoImage(file = r"images\1200x630bb.png")
     bitwardenimage = bitwardenicon.subsample(11,11)
-    bitwardenurl="https://objects.githubusercontent.com/github-production-release-asset-2e65be/53538899/97993fce-af92-400b-b5c8-c77f2382da49?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAIWNJYAX4CSVEH53A%2F20230110%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20230110T182412Z&X-Amz-Expires=300&X-Amz-Signature=838086e218d4425ad8ddc247822e0a0b6d6c37230c36f91a9d96444bdef95bf8&X-Amz-SignedHeaders=host&actor_id=112751363&key_id=0&repo_id=53538899&response-content-disposition=attachment%3B%20filename%3DBitwarden-Installer-2022.12.0.exe&response-content-type=application%2Foctet-stream"
+    bitwardenurl="https://github.com/bitwarden/clients/releases/download/desktop-v2023.1.1/Bitwarden-Installer-2023.1.1.exe"
     bitwardenpath="downloads//bitwarden.exe"
     bitwardenfile="downloads\\bitwarden.exe"
     bitwarden=ttk.Button(utilitiessectionframe,image=bitwardenimage,text="     Bitwarden \n\n ★★★★☆ 4",width=12,compound=LEFT,command=lambda: [intcheck(),install(bitwardenurl,bitwardenpath,bitwardenfile,"bitwarden")])
