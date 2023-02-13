@@ -13,6 +13,25 @@ import webbrowser
 import json
 import ctypes
 import sys
+import threading
+import time
+
+def firsttimewindow():
+    global firsttime
+    firsttime = Toplevel()
+    firsttime.overrideredirect(True)
+    app_width = 1024
+    app_height = 512
+    screenwidth = firsttime.winfo_screenwidth()
+    screenheight = firsttime.winfo_screenheight()
+    x = (screenwidth / 2) - (app_width / 2)
+    y = (screenheight / 2) - (app_height / 2)
+    firsttime.geometry(f'{app_width}x{app_height}+{int(x)}+{int(y)}')
+    
+
+    firsttime.mainloop()
+
+    
 
 def nointernetwindow(x):
     if x == "mainsplash":
@@ -52,9 +71,9 @@ def intcheckapp(x):
 
     elif net_stat == True:
         if x == "mainsplash":
-            mainsplash.withdraw()
+            mainsplash.deiconify()
         elif x == "main":
-            main.withdraw()
+            main.deiconify()
 
 def themecheck():
     with open("theme.json", "r") as file:
@@ -73,25 +92,30 @@ screenheight = mainsplash.winfo_screenheight()
 mainsplash.attributes("-alpha", 1)
 x = (screenwidth / 2) - (app_width / 2)
 y = (screenheight / 2) - (app_height / 2)
+mainsplash.geometry(f'{app_width}x{app_height}+{int(x)}+{int(y)}')
 if mode == "dark":
-    mainsplash.geometry(f'{app_width}x{app_height}+{int(x)}+{int(y)}')
     bg_image = ImageTk.PhotoImage(Image.open(r"images\softhub load dark.png"))
     label1 = Label(mainsplash, image=bg_image)
     label1.pack()
 elif mode == "light":
-    mainsplash.geometry(f'{app_width}x{app_height}+{int(x)}+{int(y)}')
     bg_image = ImageTk.PhotoImage(Image.open(r"images\softhub load light.png"))
     label1 = Label(mainsplash, image=bg_image)
     label1.pack()
-intcheckapp("mainsplash")    
-wingetpackages = str(subprocess.run(["winget", "list", "--source", "winget"], check=True, capture_output=True))
-choco_list = subprocess.run(["choco","list","--local-only"], capture_output=True, text=True)
-chocopackages = choco_list.stdout
-scooppackages = str(subprocess.check_output("scoop list", shell=True))
-packages = wingetpackages+chocopackages+scooppackages
+#intcheckapp("mainsplash")    
+def checkpack(packtype):
+    startupinfo = subprocess.STARTUPINFO()
+    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    if packtype == "🌐 Winget": 
+        packages = str(subprocess.run(["winget", "list", "--source", "winget"], check=True, capture_output=True,startupinfo=startupinfo, creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NO_WINDOW))
+    elif packtype == "🌐 Chocolatey":
+        choco_list = subprocess.run(["choco","list","--local-only"], capture_output=True, text=True,startupinfo=startupinfo, creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NO_WINDOW)
+        packages = choco_list.stdout
+    elif packtype == "🌐 Scoop":
+        packages = str(subprocess.check_output("scoop list", shell=True,startupinfo=startupinfo, creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NO_WINDOW))
+    return packages
 
 def set_appwindow(mainWindow):  # to display the window icon on the taskbar,
-    # even when using main.overrideredirect(True
+    # even when using main.overrideredirect(True)
     # Some WindowsOS styles, required for task bar integration
     GWL_EXSTYLE = -20
     WS_EX_APPWINDOW = 0x00040000
@@ -107,15 +131,21 @@ def set_appwindow(mainWindow):  # to display the window icon on the taskbar,
     mainWindow.after(10, lambda: mainWindow.wm_deiconify())
 
 def minimize_me():
-    main.attributes("-alpha", 0)  # so you can't see the window when its minimized
-    main.minimized = True
+    main.attributes("-alpha",0) # so you can't see the window when is minimized
+    main.minimized = True    
+    main.bind("<FocusIn>",deminimize)    
 
+def fake_func(event):
+    return None
 
 def deminimize(event):
-    main.focus()
-    main.attributes("-alpha", 1)  # so you can see the window when is not minimized
+
+    main.focus() 
+    main.attributes("-alpha",1) # so you can see the window when is not minimized
     if main.minimized == True:
-        main.minimized = False
+        main.minimized = False    
+
+    main.bind("<FocusIn>",fake_func)
 
 
 def deminimzewhenappinstalled():
@@ -139,6 +169,41 @@ def maximize_me():
         main.maximized = not main.maximized
         # not maximized
 
+def changex_on_hovering(event):
+    global close_button
+    close_button['bg'] = 'red'
+
+def returnx_to_normalstate(event):
+    global close_button
+    themecheck()
+    if mode =="dark":
+        close_button['bg'] = '#1c1c1c'
+    elif mode =="light":
+        close_button['bg'] = '#fafafa'
+
+def change_size_on_hovering(event):
+    global expand_button
+    expand_button['bg'] = '#999999'
+
+def return_size_on_hovering(event):
+    global expand_button
+    themecheck()
+    if mode =="dark":
+        expand_button['bg'] = '#1c1c1c'
+    if mode =="light":
+        expand_button['bg'] = '#fafafa'
+
+def changem_size_on_hovering(event):
+    global minimize_button
+    minimize_button['bg'] = '#999999'
+
+def returnm_size_on_hovering(event):
+    global minimize_button
+    themecheck()
+    if mode =="dark":
+        minimize_button['bg'] = '#1c1c1c'
+    if mode =="light":
+        minimize_button['bg'] = '#fafafa'
 
 def mainwindow():
     global close_button
@@ -158,22 +223,450 @@ def mainwindow():
     main.minimized = False
     main.maximized = False
     title_bar = Frame(main, relief='groove', bd=0.5, highlightthickness=0)
-    close_button = Button(title_bar, text='  ✕  ', command=main.destroy, padx=2, pady=2, font=("calibri", 13),
+    close_button = Button(title_bar, text='  ✕  ', command=lambda: main.destroy(), padx=2, pady=7, font=("calibri", 13),
                           bd=0, highlightthickness=0)
-    expand_button = Button(title_bar, text='  ◻  ', command=maximize_me, padx=2, pady=2, bd=0,
+    expand_button = Button(title_bar, text='  ◻  ', command=lambda:maximize_me(), padx=2, pady=7, bd=0,
                            font=("calibri", 13), highlightthickness=0)
-    minimize_button = Button(title_bar, text='  —  ', command=minimize_me, padx=2, pady=2, bd=0,
+    minimize_button = Button(title_bar, text='  —  ', command=lambda:minimize_me(), padx=2, pady=7, bd=0,
                              font=("calibri", 13), highlightthickness=0)
     title_bar_title = Label(title_bar, text="Softhub", bd=0, font=("helvetica", 14),
                             highlightthickness=0)
 
+    # pack the widgets
+    title_bar.pack(fill=X)
+
+    close_button.pack(side=RIGHT, ipadx=7, ipady=1)
+    expand_button.pack(side=RIGHT, ipadx=7, ipady=1)
+    minimize_button.pack(side=RIGHT, ipadx=7, ipady=1)
+    appicon = PhotoImage(file=r"images\softhuḃicon.png")
+    appicon = appicon.subsample(6, 6)
+    label = Label(title_bar, image=appicon)
+    label.pack(side=LEFT)
+    title_bar_title.pack(side=LEFT, padx=10)
+
+    def checkallpack():
+
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        #winget apps check
+        winpack = str(subprocess.run(["winget", "list", "--source", "winget"], check=True, capture_output=True,startupinfo=startupinfo, creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NO_WINDOW))
+        #choco apps check
+        choco_list = subprocess.run(["choco","list","--local-only"], capture_output=True, text=True,startupinfo=startupinfo, creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NO_WINDOW)
+        chocopack = choco_list.stdout
+        #scoop apps check
+        scooppack = str(subprocess.check_output("scoop list", shell=True,startupinfo=startupinfo, creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NO_WINDOW))
+
+        allpack=winpack+chocopack+scooppack
+
+        installedapplist=[]
+
+    
+    def instwindow():
+        def set_appwindow(mainWindow):  # to display the window icon on the taskbar,
+            # even when using main.overrideredirect(True)
+            # Some WindowsOS styles, required for task bar integration
+            GWL_EXSTYLE = -20
+            WS_EX_APPWINDOW = 0x00040000
+            WS_EX_TOOLWINDOW = 0x00000080
+            # Magic
+            hwnd = windll.user32.GetParent(mainWindow.winfo_id())
+            stylew = windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+            stylew = stylew & ~WS_EX_TOOLWINDOW
+            stylew = stylew | WS_EX_APPWINDOW
+            res = windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, stylew)
+
+            mainWindow.wm_withdraw()
+            mainWindow.after(10, lambda: mainWindow.wm_deiconify())
+
+        def minimize_me():
+            instwin.attributes("-alpha",0) # so you can't see the window when is minimized
+            instwin.minimized = True    
+            instwin.bind("<FocusIn>",deminimize)    
+
+        def fake_func(event):
+            return None
+
+        def deminimize(event):
+
+            instwin.focus() 
+            instwin.attributes("-alpha",1) # so you can see the window when is not minimized
+            if instwin.minimized == True:
+                instwin.minimized = False    
+
+            instwin.bind("<FocusIn>",fake_func)
+
+
+        def deminimzewhenappinstalled():
+            instwin.focus()
+            instwin.attributes("-alpha", 1)  # so you can see the window when is not minimized
+            if instwin.minimized == True:
+                instwin.minimized = False
+
+
+        def maximize_me():
+            if instwin.maximized == False:  # if the window was not maximized
+                instwin.normal_size = instwin.geometry()
+                expand_button.config(text="  🗗  ")
+                instwin.geometry(f"{instwin.winfo_screenwidth()}x{instwin.winfo_screenheight()}+0+0")
+                instwin.maximized = not instwin.maximized
+                # maximized
+
+            else:  # if the window was maximized
+                expand_button.config(text="  ◻  ")
+                instwin.geometry(instwin.normal_size)
+                instwin.maximized = not instwin.maximized
+                # not maximized
+
+        
+        global instwin
+        instwin = Toplevel()
+        instwin.tk.call('wm', 'iconphoto', instwin._w, ImageTk.PhotoImage(file='images\softhub.ico'))
+        main.withdraw()
+        screenwidth = instwin.winfo_screenwidth()
+        screenheight = instwin.winfo_screenheight()
+        app_height = int(screenheight) - 48
+        instwin.geometry(f'{screenwidth}x{app_height}+0+0')
+        instwin.title("Softhub")
+        instwin.attributes("-alpha", 1)
+        instwin.overrideredirect(True)
+        instwin.minimized = False
+        instwin.maximized = False
+        title_bar = Frame(instwin, relief='groove', bd=0.5, highlightthickness=0)
+        close_button = Button(title_bar, text='  ✕  ',command=lambda:[instwin.destroy(),main.destroy()], padx=2, pady=7, font=("calibri", 13),
+                            bd=0, highlightthickness=0)
+        expand_button = Button(title_bar, text='  ◻  ', command=lambda:maximize_me(), padx=2, pady=7, bd=0,
+                            font=("calibri", 13), highlightthickness=0)
+        minimize_button = Button(title_bar, text='  —  ', command=lambda:minimize_me(), padx=2, pady=7, bd=0,
+                                font=("calibri", 13), highlightthickness=0)
+        title_bar_title = Label(title_bar, text="Softhub", bd=0, font=("helvetica", 14),
+                                highlightthickness=0)
+
+        explore_button = ttk.Button(title_bar, text="Explore",width=15,command=lambda: [instwinremove(),updwinremove()]) 
+        installed_button = ttk.Button(title_bar, text="Installed",width=15,command=lambda:[instwinremove(),updwinremove(),loadingwindow("instwindow")])
+        Update_button = ttk.Button(title_bar, text="Updates",width=15,command=lambda: [instwinremove(),updwinremove(),loadingwindow("Updwindow")])
+        
+        explore_button.place(relx=0.45,rely=0.15)
+        installed_button.place(relx=0.33,rely=0.15)
+        Update_button.place(relx=0.57,rely=0.15)
+        
+        # pack the widgets
+        title_bar.pack(fill=X)
+
+        close_button.pack(side=RIGHT, ipadx=7, ipady=1)
+        expand_button.pack(side=RIGHT, ipadx=7, ipady=1)
+        minimize_button.pack(side=RIGHT, ipadx=7, ipady=1)
+        appicon = PhotoImage(file=r"images\softhuḃicon.png")
+        appicon = appicon.subsample(6, 6)
+        label = Label(title_bar, image=appicon)
+        label.pack(side=LEFT)
+        title_bar_title.pack(side=LEFT, padx=10)
+
+        
+        headinglabel = ttk.Label(instwin,text="Installed Apps", font=("Segou UI variable", 20))
+        headinglabel.place(relx=0.45,rely=0.1)
+
+        on = PhotoImage(file=r"images\darkicon.png")
+        on = on.subsample(4, 4)
+        off = PhotoImage(file=r"images\lighticon.png")
+        off = off.subsample(4, 4)
+
+        global is_on
+        is_on = True
+
+        def switch():
+            global is_on
+            if is_on == True:
+                theme.config(image=on)
+                is_on = False
+                mode = "dark"
+                with open("theme.json", "w") as file:
+                    data = {"mode": mode}
+                    json.dump(data, file)
+                sv.set_theme("dark")
+                label.update()
+
+            else:
+                theme.config(image=off)
+                is_on = True
+                mode = "light"
+                with open("theme.json", "w") as file:
+                    data = {"mode": mode}
+                    json.dump(data, file)
+                sv.set_theme("light")
+                label.update()
+
+
+        theme = ttk.Button(title_bar, image=on, padding=0,command=lambda: switch())
+        theme.place(relx=0.78, rely=0.075)
+        if mode == "light":
+            theme.config(image=off)
+        elif mode == "dark":
+            theme.config(image=on)
+        
+        def openlink():
+            webbrowser.open_new("https://github.com/ACExSWAROOP")
+
+        abouticon = PhotoImage(file=r"images\about.png")
+        abouticon = abouticon.subsample(22, 22)
+        aboutbutton = ttk.Button(title_bar, image=abouticon, padding=0, command=lambda: openlink())
+        aboutbutton.place(relx=0.1, rely=0.15)
+
+        settingsicon= PhotoImage(file=r"images\settings.png")
+        settingsicon = settingsicon.subsample(16, 16)
+        settingsbutton = ttk.Button(title_bar, image=settingsicon, padding=0, command=lambda: settingswindow())
+        settingsbutton.place(relx=0.84, rely=0.075)
+
+        close_button.bind('<Enter>', changex_on_hovering)
+        close_button.bind('<Leave>', returnx_to_normalstate)
+        expand_button.bind('<Enter>', change_size_on_hovering)
+        expand_button.bind('<Leave>', return_size_on_hovering)
+        minimize_button.bind('<Enter>', changem_size_on_hovering)
+        minimize_button.bind('<Leave>', returnm_size_on_hovering)
+            
+        closeloadapps()
+
+         # some settings
+        instwin.bind("<FocusIn>", deminimize)  # to view the window by clicking on the window icon on the taskbar
+        instwin.after(10, lambda: set_appwindow(instwin))  # to see the icon on the task bar
+        instwin.mainloop()
+
+    def loadingwindow(window):
+        global loadapps
+        loadapps = Toplevel()
+        loadapps.overrideredirect(True)
+        main.attributes("-alpha", 0.9)
+        app_width = 1024
+        app_height = 512
+        screenwidth = loadapps.winfo_screenwidth()
+        screenheight = loadapps.winfo_screenheight()
+        x = (screenwidth / 2) - (app_width / 2)
+        y = (screenheight / 2) - (app_height / 2)
+        loadapps.geometry(f'{app_width}x{app_height}+{int(x)}+{int(y)}')
+        global packages
+        if mode == "dark":
+            bg_image = ImageTk.PhotoImage(Image.open(r"images\checkupdates dark.png"))
+            label1 = Label(loadapps, image=bg_image)
+            label1.pack()
+        elif mode == "light":
+            bg_image = ImageTk.PhotoImage(Image.open(r"images\checkupdates light.png"))
+            label1 = Label(loadapps, image=bg_image)
+            label1.pack()
+        loadapps.update()
+        
+        allapps=checkallpack()
+
+        if window == "Updwindow":
+            loadapps.after(3000,lambda: Updwindow())
+        elif window == "instwindow":
+            loadapps.after(3000,lambda: instwindow())
+            
+        loadapps.mainloop()
+
+    def Updwindow():
+        def set_appwindow(mainWindow):  # to display the window icon on the taskbar,
+            # even when using main.overrideredirect(True)
+            # Some WindowsOS styles, required for task bar integration
+            GWL_EXSTYLE = -20
+            WS_EX_APPWINDOW = 0x00040000
+            WS_EX_TOOLWINDOW = 0x00000080
+            # Magic
+            hwnd = windll.user32.GetParent(mainWindow.winfo_id())
+            stylew = windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+            stylew = stylew & ~WS_EX_TOOLWINDOW
+            stylew = stylew | WS_EX_APPWINDOW
+            res = windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, stylew)
+
+            mainWindow.wm_withdraw()
+            mainWindow.after(10, lambda: mainWindow.wm_deiconify())
+
+        def minimize_me():
+            updwin.attributes("-alpha",0) # so you can't see the window when is minimized
+            updwin.minimized = True    
+            updwin.bind("<FocusIn>",deminimize)    
+
+        def fake_func(event):
+            return None
+
+        def deminimize(event):
+
+            updwin.focus() 
+            updwin.attributes("-alpha",1) # so you can see the window when is not minimized
+            if updwin.minimized == True:
+                updwin.minimized = False    
+
+            updwin.bind("<FocusIn>",fake_func)
+
+
+        def deminimzewhenappinstalled():
+            updwin.focus()
+            updwin.attributes("-alpha", 1)  # so you can see the window when is not minimized
+            if updwin.minimized == True:
+                updwin.minimized = False
+
+
+        def maximize_me():
+            if updwin.maximized == False:  # if the window was not maximized
+                updwin.normal_size = updwin.geometry()
+                expand_button.config(text="  🗗  ")
+                updwin.geometry(f"{updwin.winfo_screenwidth()}x{updwin.winfo_screenheight()}+0+0")
+                updwin.maximized = not updwin.maximized
+                # maximized
+
+            else:  # if the window was maximized
+                expand_button.config(text="  ◻  ")
+                updwin.geometry(updwin.normal_size)
+                updwin.maximized = not updwin.maximized
+                # not maximized
+
+        global updwin
+        updwin = Toplevel()
+        updwin.tk.call('wm', 'iconphoto', updwin._w, ImageTk.PhotoImage(file='images\softhub.ico'))
+        main.withdraw()
+        screenwidth = updwin.winfo_screenwidth()
+        screenheight = updwin.winfo_screenheight()
+        app_height = int(screenheight) - 48
+        updwin.geometry(f'{screenwidth}x{app_height}+0+0')
+        updwin.title("Softhub")
+        updwin.attributes("-alpha", 1)
+        updwin.overrideredirect(True)
+        updwin.minimized = False
+        updwin.maximized = False
+        title_bar = Frame(updwin, relief='groove', bd=0.5, highlightthickness=0)
+        close_button = Button(title_bar, text='  ✕  ', command=lambda:[updwin.destroy(),main.destroy()], padx=2, pady=7, font=("calibri", 13),
+                            bd=0, highlightthickness=0)
+        expand_button = Button(title_bar, text='  ◻  ', command=lambda:maximize_me(), padx=2, pady=7, bd=0,
+                            font=("calibri", 13), highlightthickness=0)
+        minimize_button = Button(title_bar, text='  —  ', command=lambda:minimize_me(), padx=2, pady=7, bd=0,
+                                font=("calibri", 13), highlightthickness=0)
+        title_bar_title = Label(title_bar, text="Softhub", bd=0, font=("helvetica", 14),
+                                highlightthickness=0)
+
+        explore_button = ttk.Button(title_bar, text="Explore",width=15,command=lambda: [instwinremove(),updwinremove()]) 
+        installed_button = ttk.Button(title_bar, text="Installed",width=15,command=lambda:[instwinremove(),updwinremove(),loadingwindow("instwindow")])
+        Update_button = ttk.Button(title_bar, text="Updates",width=15,command=lambda: [instwinremove(),updwinremove(),loadingwindow("Updwindow")])
+
+        close_button.bind('<Enter>', changex_on_hovering)
+        close_button.bind('<Leave>', returnx_to_normalstate)
+        expand_button.bind('<Enter>', change_size_on_hovering)
+        expand_button.bind('<Leave>', return_size_on_hovering)
+        minimize_button.bind('<Enter>', changem_size_on_hovering)
+        minimize_button.bind('<Leave>', returnm_size_on_hovering)
+
+        explore_button.place(relx=0.45,rely=0.15)
+        installed_button.place(relx=0.33,rely=0.15)
+        Update_button.place(relx=0.57,rely=0.15)
+        
+        # pack the widgets
+        title_bar.pack(fill=X)
+
+        close_button.pack(side=RIGHT, ipadx=7, ipady=1)
+        expand_button.pack(side=RIGHT, ipadx=7, ipady=1)
+        minimize_button.pack(side=RIGHT, ipadx=7, ipady=1)
+        appicon = PhotoImage(file=r"images\softhuḃicon.png")
+        appicon = appicon.subsample(6, 6)
+        label = Label(title_bar, image=appicon)
+        label.pack(side=LEFT)
+        title_bar_title.pack(side=LEFT, padx=10)
+
+        headinglabel = ttk.Label(updwin,text="Update Apps", font=("Segou UI variable", 20))
+        headinglabel.place(relx=0.45,rely=0.1)
+
+        on = PhotoImage(file=r"images\darkicon.png")
+        on = on.subsample(4, 4)
+        off = PhotoImage(file=r"images\lighticon.png")
+        off = off.subsample(4, 4)
+
+        global is_on
+        is_on = True
+
+        def switch():
+            global is_on
+            if is_on == True:
+                theme.config(image=on)
+                is_on = False
+                mode = "dark"
+                with open("theme.json", "w") as file:
+                    data = {"mode": mode}
+                    json.dump(data, file)
+                sv.set_theme("dark")
+                label.update()
+
+            else:
+                theme.config(image=off)
+                is_on = True
+                mode = "light"
+                with open("theme.json", "w") as file:
+                    data = {"mode": mode}
+                    json.dump(data, file)
+                sv.set_theme("light")
+                label.update()
+
+
+        theme = ttk.Button(title_bar, image=on, padding=0,command=lambda: switch())
+        theme.place(relx=0.78, rely=0.075)
+        if mode == "light":
+            theme.config(image=off)
+        elif mode == "dark":
+            theme.config(image=on)
+        
+        def openlink():
+            webbrowser.open_new("https://github.com/ACExSWAROOP")
+
+        abouticon = PhotoImage(file=r"images\about.png")
+        abouticon = abouticon.subsample(22, 22)
+        aboutbutton = ttk.Button(title_bar, image=abouticon, padding=0, command=lambda: openlink())
+        aboutbutton.place(relx=0.1, rely=0.15)
+
+        settingsicon= PhotoImage(file=r"images\settings.png")
+        settingsicon = settingsicon.subsample(16, 16)
+        settingsbutton = ttk.Button(title_bar, image=settingsicon, padding=0, command=lambda: settingswindow())
+        settingsbutton.place(relx=0.84, rely=0.075)
+        
+        closeloadapps()
+         # some settings
+        updwin.bind("<FocusIn>", deminimize)  # to view the window by clicking on the window icon on the taskbar
+        updwin.after(10, lambda: set_appwindow(updwin))  # to see the icon on the task bar
+        closeloadapps()
+        updwin.mainloop()
+
+    def instwinremove():
+        try:
+            main.attributes("-alpha", 1)
+            main.deiconify()
+            instwin.destroy()
+        except NameError:
+            pass
+    def updwinremove():
+        try:
+            main.attributes("-alpha", 1)
+            main.deiconify()
+            updwin.destroy()
+        except NameError:
+            pass
+
+    def closeloadapps():
+        loadapps.destroy()
+
+
+    explore_button = ttk.Button(title_bar, text="Explore",width=15,command=lambda: [instwinremove(),updwinremove()]) 
+    installed_button = ttk.Button(title_bar, text="Installed",width=15,command=lambda:[instwinremove(),updwinremove(),loadingwindow("instwindow")])
+    Update_button = ttk.Button(title_bar, text="Updates",width=15,command=lambda: [instwinremove(),updwinremove(),loadingwindow("Updwindow")])
+
+    explore_button.place(relx=0.45,rely=0.15)
+    installed_button.place(relx=0.33,rely=0.15)
+    Update_button.place(relx=0.57,rely=0.15)
+
     # main frame
     window = Frame(main, highlightthickness=0)
+    window.pack(expand=1, fill=BOTH)
 
     def close():
         settings.destroy()
+        main.attributes("-alpha", 1)
 
+    
     def settingswindow():
+        main.attributes("-alpha", 0.9)
         def savedoptions():
             try:
                 with open("settings.json", "r") as x:
@@ -182,6 +675,7 @@ def mainwindow():
                     scoopval=data["scoop"]
                     gitval=data["git"]
                     urlval=data["url"]
+                    autoupdateval=data["autoupdate"]
 
                     if chocoval == 1:
                         choco.set(1)
@@ -191,9 +685,10 @@ def mainwindow():
                         github.set(1)
                     if urlval == 1:
                         url.set(1)
+                    if  autoupdateval == 1:
+                        autoupd.set(1)
             except json.JSONDecodeError:
                 pass
-
         global settings
         settings = Toplevel()
         settings.overrideredirect(True)
@@ -215,17 +710,16 @@ def mainwindow():
         github = IntVar()
         global url
         url= IntVar()
-
+        global autoupd
+        autoupd = IntVar()
+        
         def saveconfig():
             checkvalues= {}
             checkvalues["choco"] = choco.get()
             checkvalues["scoop"] = scoop.get()
             checkvalues["git"] = github.get()
             checkvalues["url"] = url.get()
-            if choco.get()==1:
-                chococheck()
-            if scoop.get()==1:
-                scoopcheck()
+            checkvalues["autoupdate"] = autoupd.get()
 
             with open("settings.json", "w") as json_file:
                 json.dump(checkvalues, json_file)
@@ -236,6 +730,7 @@ def mainwindow():
         scoopallow = ttk.Checkbutton(settings,text="Enable scoop",variable=scoop)
         githuballow = ttk.Checkbutton(settings,text="Enable Git downloads", variable=github)
         urlallow = ttk.Checkbutton(settings,text="Enable URL downloads", variable=url)
+        atupdate = ttk.Checkbutton(settings,text="Enable Auto Update", variable=autoupd)
         
         savebutton= ttk.Button(settings,text="Save",width=15,command=lambda: saveconfig())
         pref.place(relx=0.4,rely=0.15)
@@ -243,6 +738,7 @@ def mainwindow():
         scoopallow.place(relx=0.1,rely=0.4)
         githuballow.place(relx=0.1,rely=0.5)
         urlallow.place(relx=0.1,rely=0.6)
+        atupdate.place(relx=0.5,rely=0.3)
         savebutton.place(relx=0.4,rely=0.8)
         
         savedoptions()
@@ -276,197 +772,201 @@ def mainwindow():
         elif x ==  'Code editors':
             my_canvas.yview("moveto",0.1)
         elif x ==  'Command line utilities':
-            my_canvas.yview("moveto",0.10810810810810811)
+            my_canvas.yview("moveto",0.10909090909090909)
         elif x ==  'Communication apps':
-            my_canvas.yview("moveto",0.11711711711711711)
+            my_canvas.yview("moveto",0.11818181818181818)
         elif x ==  'Creativity apps':
-            my_canvas.yview("moveto",0.12612612612612611)
+            my_canvas.yview("moveto",0.12727272727272726)
         elif x ==  'Customer relationship management apps' :
-            my_canvas.yview("moveto",0.13513513513513514)
+            my_canvas.yview("moveto",0.13636363636363635)
         elif x == 'Data backup apps' :
-            my_canvas.yview("moveto",0.14414414414414414)
+            my_canvas.yview("moveto",0.14545454545454545)
         elif x == 'Data recovery apps':
-            my_canvas.yview("moveto",0.15315315315315314)
+            my_canvas.yview("moveto",0.15454545454545454)
         elif x ==  'Database administration apps':
-            my_canvas.yview("moveto",0.16216216216216217)
+            my_canvas.yview("moveto",0.16363636363636364)
         elif x == 'Database design and development apps':
-            my_canvas.yview("moveto",0.17117117117117117)
+            my_canvas.yview("moveto",0.17272727272727273)
         elif x == 'Database management apps':
-            my_canvas.yview("moveto",0.18018018018018017)
+            my_canvas.yview("moveto",0.18181818181818182)
         elif x ==  'Database modeling apps' :
-            my_canvas.yview("moveto",0.1891891891891892)
+            my_canvas.yview("moveto",0.19090909090909092)
         elif x == 'Database reporting apps':
-            my_canvas.yview("moveto",0.1981981981981982)
+            my_canvas.yview("moveto",0.2)
         elif x ==  'Debugging tools' :
-            my_canvas.yview("moveto",0.2072072072072072)
+            my_canvas.yview("moveto",0.20909090909090908)
         elif x == 'Development apps' :
-            my_canvas.yview("moveto",0.21621621621621623)
+            my_canvas.yview("moveto",0.21818181818181817)
         elif x == 'Disk cleanup and management apps':
-            my_canvas.yview("moveto",0.22522522522522523)
+            my_canvas.yview("moveto",0.22727272727272727)
         elif x ==  'Documents' :
-            my_canvas.yview("moveto",0.23423423423423423)
+            my_canvas.yview("moveto",0.23636363636363636)
         elif x == 'Driver update and management apps':     
-            my_canvas.yview("moveto",0.24324324324324326)
+            my_canvas.yview("moveto",0.24545454545454545)
         elif x == 'E-book readers':
-            my_canvas.yview("moveto",0.25225225225225223)
+            my_canvas.yview("moveto",0.2545454545454545)
         elif x == 'E-commerce apps':
-            my_canvas.yview("moveto",0.26126126126126126)
+            my_canvas.yview("moveto",0.2636363636363636)
         elif x == 'E-mail marketing apps':
-            my_canvas.yview("moveto",0.2702702702702703)
+            my_canvas.yview("moveto",0.2727272727272727)
         elif x == 'Educational apps':
-            my_canvas.yview("moveto",0.27927927927927926)
+            my_canvas.yview("moveto",0.2818181818181818)
         elif x ==  'Educational apps for kids':
-            my_canvas.yview("moveto",0.2882882882882883)
+            my_canvas.yview("moveto",0.2909090909090909)
         elif x ==  'Encryption and security apps':
-            my_canvas.yview("moveto",0.2972972972972973)
+            my_canvas.yview("moveto",0.3)
         elif x == 'Enterprise resource planning apps' :
-            my_canvas.yview("moveto",0.3063063063063063)
+            my_canvas.yview("moveto",0.3090909090909091)
         elif x == 'Entertainment apps':         
-            my_canvas.yview("moveto",0.3153153153153153)
+            my_canvas.yview("moveto",0.3181818181818182)
         elif x == 'File conversion apps':
-            my_canvas.yview("moveto",0.32432432432432434)
+            my_canvas.yview("moveto",0.32727272727272727)
         elif x == 'File transfer and synchronization apps':
-            my_canvas.yview("moveto",0.3333333333333333)
+            my_canvas.yview("moveto",0.33636363636363636)
         elif x == 'Finance apps':
-            my_canvas.yview("moveto",0.34234234234234234)
+            my_canvas.yview("moveto",0.34545454545454546)
         elif x == 'Firewall and intrusion detection apps':
-            my_canvas.yview("moveto",0.35135135135135137)
+            my_canvas.yview("moveto",0.35454545454545455)
         elif x == 'Game AI development apps':
-            my_canvas.yview("moveto",0.36036036036036034)
+            my_canvas.yview("moveto",0.36363636363636365)
         elif x == 'Game VR and AR development apps':
-            my_canvas.yview("moveto",0.36936936936936937)
+            my_canvas.yview("moveto",0.37272727272727274)
         elif x == 'Game accessibility apps':
-            my_canvas.yview("moveto",0.3783783783783784)
+            my_canvas.yview("moveto",0.38181818181818183)
         elif x ==  'Game analytics and data visualization apps':
-            my_canvas.yview("moveto",0.38738738738738737)
+            my_canvas.yview("moveto",0.39090909090909093)
         elif x ==  'Game community and social media apps':
-            my_canvas.yview("moveto",0.3963963963963964)
+            my_canvas.yview("moveto",0.4)
         elif x == 'Game distribution and publishing apps':
-            my_canvas.yview("moveto",0.40540540540540543)
+            my_canvas.yview("moveto",0.4090909090909091)
         elif x == 'Game emulators':
-            my_canvas.yview("moveto",0.4144144144144144)
+            my_canvas.yview("moveto",0.41818181818181815)
         elif x == 'Game engines':       
-            my_canvas.yview("moveto",0.42342342342342343)
+            my_canvas.yview("moveto",0.42727272727272725)
         elif x == 'Game launcher':
-            my_canvas.yview("moveto",0.43243243243243246)
+            my_canvas.yview("moveto",0.43636363636363634)
         elif x == 'Game marketing and promotion apps':
-            my_canvas.yview("moveto",0.44144144144144143)
+            my_canvas.yview("moveto",0.44545454545454544)
         elif x ==  'Game monetization apps':
-            my_canvas.yview("moveto",0.45045045045045046)
+            my_canvas.yview("moveto",0.45454545454545453)
         elif x == 'Game motion capture apps':
-            my_canvas.yview("moveto",0.4594594594594595)
+            my_canvas.yview("moveto",0.4636363636363636)
         elif x ==  'Game music composition apps':
-            my_canvas.yview("moveto",0.46846846846846846)
+            my_canvas.yview("moveto",0.4727272727272727)
         elif x == 'Game networking apps':
-            my_canvas.yview("moveto",0.4774774774774775)
+            my_canvas.yview("moveto",0.4818181818181818)
         elif x ==  'Game physics apps':
-            my_canvas.yview("moveto",0.4864864864864865)
+            my_canvas.yview("moveto",0.4909090909090909)
         elif x == 'Game physics simulation apps':
-            my_canvas.yview("moveto",0.4954954954954955)
+            my_canvas.yview("moveto",0.5)
         elif x == 'Game scriptwriting and story development apps':
-            my_canvas.yview("moveto",0.5045045045045045)
+            my_canvas.yview("moveto",0.509090909090909)
         elif x == 'Game streaming and broadcasting apps':
-            my_canvas.yview("moveto",0.5135135135135135)
+            my_canvas.yview("moveto",0.5181818181818182)
         elif x == 'Graphic design apps':
-            my_canvas.yview("moveto",0.5225225225225225)
+            my_canvas.yview("moveto",0.5272727272727272)
         elif x == 'Health and fitness apps':          
-            my_canvas.yview("moveto",0.5315315315315315)
+            my_canvas.yview("moveto",0.5363636363636364)
         elif x == 'Human resources management apps':
-            my_canvas.yview("moveto",0.5405405405405406)
+            my_canvas.yview("moveto",0.5454545454545454)
         elif x == 'Image editing and manipulation apps':
-            my_canvas.yview("moveto",0.5495495495495496)
+            my_canvas.yview("moveto",0.5545454545454546)
         elif x == 'Integrated development environments (IDEs)':
-            my_canvas.yview("moveto",0.5585585585585585)
+            my_canvas.yview("moveto",0.5636363636363636)
         elif x ==  'Inventory management apps':
-            my_canvas.yview("moveto",0.5675675675675675)
+            my_canvas.yview("moveto",0.5727272727272728)
         elif x == 'Language learning apps':
-            my_canvas.yview("moveto",0.5765765765765766)
+            my_canvas.yview("moveto",0.5818181818181818)
         elif x ==  'Map and navigation apps':
-            my_canvas.yview("moveto",0.5855855855855856)
+            my_canvas.yview("moveto",0.5909090909090909)
         elif x == 'Mind and body apps':
-            my_canvas.yview("moveto",0.5945945945945946)
+            my_canvas.yview("moveto",0.6)
         elif x == 'Mind mapping and brainstorming apps':
-            my_canvas.yview("moveto",0.6036036036036037)
+            my_canvas.yview("moveto",0.6090909090909091)
         elif x == 'Multimedia':
-            my_canvas.yview("moveto",0.6126126126126126)
+            my_canvas.yview("moveto",0.6181818181818182)
         elif x == 'Music streaming apps':
-            my_canvas.yview("moveto",0.6216216216216216)
+            my_canvas.yview("moveto",0.6272727272727273)
         elif x == 'Network monitoring and management apps':
-            my_canvas.yview("moveto",0.6306306306306306)
+            my_canvas.yview("moveto",0.6363636363636364)
         elif x == 'News apps':
-            my_canvas.yview("moveto",0.6396396396396397)
+            my_canvas.yview("moveto",0.6454545454545455)
         elif x == 'Office Suite apps':
-            my_canvas.yview("moveto",0.6486486486486487)
+            my_canvas.yview("moveto",0.6545454545454545)
         elif x == 'PDF readers and editors':
-            my_canvas.yview("moveto",0.6576576576576577)
+            my_canvas.yview("moveto",0.6636363636363637)
         elif x == 'Parental control apps':
-            my_canvas.yview("moveto",0.6666666666666666)
+            my_canvas.yview("moveto",0.6727272727272727)
         elif x ==  'Password management apps':
-            my_canvas.yview("moveto",0.6756756756756757)
+            my_canvas.yview("moveto",0.6818181818181818)
         elif x == 'Payroll management apps':
-            my_canvas.yview("moveto",0.6846846846846847)
+            my_canvas.yview("moveto",0.6909090909090909)
         elif x == 'Personal organization apps':
-            my_canvas.yview("moveto",0.6936936936936937)
+            my_canvas.yview("moveto",0.7)
         elif x == 'Point-of-sale apps':
-            my_canvas.yview("moveto",0.7027027027027027)
+            my_canvas.yview("moveto",0.7090909090909091)
+        elif x == 'Presentation and slide creation':
+            my_canvas.yview("moveto",0.7181818181818181)
         elif x == 'Profiling tools':
-            my_canvas.yview("moveto",0.7117117117117117)
+            my_canvas.yview("moveto",0.7272727272727273)
+        elif x == 'Programming and development tools':
+            my_canvas.yview("moveto",0.7363636363636363)
         elif x == 'Project management apps':
-            my_canvas.yview("moveto",0.7207207207207207)
+            my_canvas.yview("moveto",0.7454545454545455)
         elif x == 'Remote access and control apps':
-            my_canvas.yview("moveto",0.7297297297297297)
+            my_canvas.yview("moveto",0.7545454545454545)
         elif x == 'Retail management apps':
-            my_canvas.yview("moveto",0.7387387387387387)
+            my_canvas.yview("moveto",0.7636363636363637)
         elif x ==  'SEO and analytics apps':
-            my_canvas.yview("moveto",0.7477477477477478)
+            my_canvas.yview("moveto",0.7727272727272727)
         elif x == 'Screenshot and screen recording apps':
-            my_canvas.yview("moveto",0.7567567567567568)
+            my_canvas.yview("moveto",0.7818181818181819)
         elif x == 'Social media apps':
-            my_canvas.yview("moveto",0.7657657657657657)
+            my_canvas.yview("moveto",0.7909090909090909)
         elif x ==  'Supply chain management apps':
-            my_canvas.yview("moveto",0.7747747747747747)
+            my_canvas.yview("moveto",0.8)
         elif x == 'System information and diagnostic apps':
-            my_canvas.yview("moveto",0.7837837837837838)
+            my_canvas.yview("moveto",0.8090909090909091)
         elif x == 'System optimization and performance apps':
-            my_canvas.yview("moveto",0.7927927927927928)
+            my_canvas.yview("moveto",0.8181818181818182)
         elif x == 'Tax preparation and filing apps':
-            my_canvas.yview("moveto",0.8018018018018018)
+            my_canvas.yview("moveto",0.8272727272727273)
         elif x == 'Terminal emulators':
-            my_canvas.yview("moveto",0.8108108108108109)
+            my_canvas.yview("moveto",0.8363636363636363)
         elif x == 'Text editors' :
-            my_canvas.yview("moveto",0.8198198198198198)
+            my_canvas.yview("moveto",0.8454545454545455)
         elif x == 'Time tracking and invoicing apps':
-            my_canvas.yview("moveto",0.8288288288288288)
+            my_canvas.yview("moveto",0.8545454545454545)
         elif x ==  'Travel apps':
-            my_canvas.yview("moveto",0.8378378378378378)
+            my_canvas.yview("moveto",0.8636363636363636)
         elif x == 'Utilities apps':
-            my_canvas.yview("moveto",0.8468468468468469)
+            my_canvas.yview("moveto",0.8727272727272727)
         elif x == 'VPN apps':
-            my_canvas.yview("moveto",0.8558558558558559)
+            my_canvas.yview("moveto",0.8818181818181818)
         elif x == 'Video and audio compression apps':
-            my_canvas.yview("moveto",0.8648648648648649)
+            my_canvas.yview("moveto",0.8909090909090909)
         elif x == 'Video editing apps':
-            my_canvas.yview("moveto",0.8828828828828829)
+            my_canvas.yview("moveto",0.9)
         elif x == 'Video streaming apps':
-            my_canvas.yview("moveto",0.8918918918918919)
+            my_canvas.yview("moveto",0.9090909090909091)
         elif x == 'Virtual and augmented reality apps':
-            my_canvas.yview("moveto",0.9009009009009009)
+            my_canvas.yview("moveto",0.9181818181818182)
         elif x == 'Virtual event and webinar apps':
-            my_canvas.yview("moveto",0.9099099099099099)
+            my_canvas.yview("moveto",0.9272727272727272)
         elif x == 'Virtual meeting and conference apps':
-            my_canvas.yview("moveto",0.918918918918919)
+            my_canvas.yview("moveto",0.9363636363636364)
         elif x == 'Virtual reality content creation apps':
-            my_canvas.yview("moveto",0.9279279279279279)
+            my_canvas.yview("moveto",0.9454545454545454)
         elif x ==  'Virtualization software':
-            my_canvas.yview("moveto",0.9369369369369369)
+            my_canvas.yview("moveto",0.9545454545454546)
         elif x == 'Voice recognition apps' :
-            my_canvas.yview("moveto",0.9459459459459459)
+            my_canvas.yview("moveto",0.9636363636363636)
         elif x == 'Weather apps':
-            my_canvas.yview("moveto",0.954954954954955)
+            my_canvas.yview("moveto",0.9727272727272728)
         elif x == 'Web Browsers' :
-            my_canvas.yview("moveto",0.963963963963964)
+            my_canvas.yview("moveto",0.9818181818181818)
         elif x == 'Windows customization apps':
-            my_canvas.yview("moveto",0.972972972972973)
+            my_canvas.yview("moveto",0.990909090909091)
 
     sidebar2= Frame(window, height=28, relief='groove', bd=0.5, highlightthickness=0)
     sidebar2.pack(side='top', fill='both')
@@ -474,21 +974,184 @@ def mainwindow():
     categorylabel=ttk.Label(sidebar2,text="Categories", font=("Segou UI variable", 12),borderwidth=2)
     categorylabel.place(relx=0.065,rely=0.10)
 
-    status = ttk.Label(sidebar2, text="v.0.3.Alpha", font=("Segou UI variable", 10))
-    status.place(relx=0.94, rely=0.1)
+    status = ttk.Label(sidebar2, text="v.0.6.Alpha", font=("Segou UI variable", 10))
+    status.place(relx=0.92, rely=0.1)
 
     quote = ttk.Label(sidebar2, text="Simplifying software management", font=("Segou UI variable", 10))
-    quote.place(relx=0.475, rely=0.1)
+    quote.place(relx=0.435, rely=0.1)
 
     sidebar = ttk.Frame(window, width=30, height=300,relief='raised')
     sidebar.pack(side='left', fill='both')
+
+    sidebar3= Frame(window, height=45, relief='groove', bd=0.5, highlightthickness=0)
+    sidebar3.pack(side='top', fill='both')
     
+    searchlabel = ttk.Label(sidebar3, text="Quick install", font=("Segou UI variable", 15))
+    searchlabel.place(relx=0.02, rely=0.2)
+
+    searchval= StringVar()
+
+    searchbar=ttk.Entry(sidebar3,textvariable=searchval,width=25)
+    searchbar.place(relx=0.15,rely=0.15) 
+
+    def checkappexists():
+        search=searchval.get()
+        foundin=[0,0,0]
+        global wingetresult
+        global chocoresult
+        global scoopresult
+        try:
+            wingetresult=str(subprocess.run(["winget", "show", search], stderr=subprocess.PIPE))
+            foundin[0]=1
+            if wingetresult=="No package found matching input criteria.":
+                foundin[0]=0
+        except subprocess.CalledProcessError:
+            foundin[0]=0
+        try:
+            chocoresult=subprocess.check_output(['choco', 'search', '--exact', search], stderr=subprocess.PIPE)
+            foundin[1]=1
+            chocoresult=str(chocoresult).split("\\r\\n")
+            if chocoresult[1] == '0 packages found.':
+                foundin[1]=0
+        except subprocess.CalledProcessError:
+            foundin[1]=0
+        try:
+            scoopresult=subprocess.check_output(f"scoop search {search}",shell=True)
+            foundin[2]=1
+        except subprocess.CalledProcessError:
+            foundin[3]=0
+
+        if foundin == [0,0,0]:
+            displaysearchinfo.config(text="App not Found")
+        elif foundin == [1,0,0]:
+            displaysearchinfo.config(text="App Found in Winget")
+        elif foundin == [0,1,0]:
+            displaysearchinfo.config(text="App Found in Chocolatey")
+        elif foundin == [0,0,1]:
+            displaysearchinfo.config(text="App Found in Scoop")
+        elif foundin == [1,1,0]:
+            displaysearchinfo.config(text="App Found in Winget and Chocolatey")
+        elif foundin == [1,0,1]:
+            displaysearchinfo.config(text="App Found in Winget and Scoop")
+        elif foundin == [0,1,1]:
+            displaysearchinfo.config(text="App Found in Chocolatey and Scoop")
+        elif foundin == [1,1,1]:
+            displaysearchinfo.config(text="App Found in Winget,Chocolatey and Scoop")
+    
+    global apps
+    apps=[]
+
+    def clr():
+        global apps
+        apps=[]
+
+    def wininstall():
+        try:
+            clr()
+            intcheckapp("main")
+            start = wingetresult.index("['")
+            end = wingetresult.index("']")
+            result = wingetresult[start+2:end].split("', '")
+            result = str(subprocess.run(result, capture_output=True))
+            start = result.index("Name")
+            end = result.index("stderr=b'')")
+            result = result[start:end]
+            result = result.strip().split("\\r\\n")
+            print(result)
+            global apps
+            for line in result[2:]:
+                items = line.split()
+                if len(items)==4:
+                    app_id = items[2]
+                elif len(items)==3:
+                    app_id = items[1]
+                elif len(items)==5:
+                    app_id = items[3]
+                elif len(items)==6:
+                    app_id = items[4]
+                elif len(items)==7:
+                    app_id = items[5]
+                elif len(items)==8:
+                    app_id = items[6]
+                elif len(items)==9:
+                    app_id = items[7]
+                apps.append(app_id)
+            apps.pop()
+            selectinstall()
+        except NameError:
+            pass
+        
+    def choinstall():
+        try:
+            search=searchval.get()
+            intcheckapp("main")
+
+            print(chocoresult)
+            subprocess.run(f"choco install {search} -y", shell=True)
+        except NameError:
+            pass
+
+    def scooinstall():
+        search=searchval.get()
+        intcheckapp("main")
+        subprocess.run(f"scoop bucket add {search}", shell=True)
+    
+    def selectinstall():
+        selinst = Toplevel()
+        selinst.overrideredirect(True)
+        app_width = 512
+        app_height = 256
+        screenwidth = selinst.winfo_screenwidth()
+        screenheight = selinst.winfo_screenheight()
+        x = (screenwidth / 2) - (app_width / 2)
+        y = (screenheight / 2) - (app_height / 2)
+        selinst.geometry(f'{app_width}x{app_height}+{int(x)}+{int(y)}')
+        main.bind("<Button-3>", lambda e: [selinst.destroy(),clr()])
+        selinst.bind("<Button-3>", lambda e:[selinst.destroy(),clr()])
+        main.bind("<Button-1>", lambda e:[selinst.destroy(),clr()])
+
+      
+        def on_select():
+            selected = [apps[index] for index in range(len(apps)) if vars[index].get() == 1]
+            print(selected)
+            subprocess.run(["winget", "install", "--id", selected[0]],stderr=subprocess.PIPE)
+
+        vars = []
+        for index, app_id in enumerate(apps):
+            var = IntVar()
+            checkbox = ttk.Checkbutton(selinst, text=app_id, variable=var)
+            checkbox.pack()
+            vars.append(var)
+
+        select_button = ttk.Button(selinst, text="Install", command=lambda: threading.Thread(target=on_select).start())
+        select_button.pack()
+
+        selinst.mainloop()
+
+    def chekingmsg():
+        displaysearchinfo.config(text="Checking for apps ◯")
+
+    searchicon=PhotoImage(file=r"images\search.png")
+    searchimage = searchicon.subsample(12,12)
+    searchbutton =ttk.Button(sidebar3,image=searchimage,padding=0,command=lambda:[chekingmsg(),threading.Thread(target=checkappexists).start()])
+    searchbutton.place(relx=0.32,rely=0.15)
+    
+    displaysearchinfo= ttk.Label(sidebar3, text="", font=("Segou UI variable", 13))
+    displaysearchinfo.place(relx=0.37,rely=0.25) 
+
+    wingetbutton=ttk.Button(sidebar3,text="Winget",command=lambda:wininstall())
+    chocobutton=ttk.Button(sidebar3,text="Chocolatey",command=lambda:choinstall())
+    Scoopbutton=ttk.Button(sidebar3,text="Scoop",command=lambda:scooinstall())
+
+    wingetbutton.place(relx=0.782,rely=0.15) 
+    chocobutton.place(relx=0.85,rely=0.15) 
+    Scoopbutton.place(relx=0.94,rely=0.15) 
+
     scrollbar = ttk.Scrollbar(sidebar)
     #scrollbar.pack(side=RIGHT, fill=Y)
 
     listbox = Listbox(sidebar, yscrollcommand=scrollbar.set, highlightthickness=0,width=38)
     allcategories=['3D modeling and animation apps', '3D printing apps', '3D rendering apps', '3D scanning apps', 'Accounting and financial management apps', 'Audio recording and editing apps', 'Augmented reality content creation apps', 'Backup and recovery apps', 'Business apps', 'CAD software', 'Cloud storage and syncing apps', 'Code editors', 'Command line utilities', 'Communication apps', 'Creativity apps', 'Customer relationship management apps', 'Data backup apps', 'Data recovery apps', 'Database administration apps', 'Database design and development apps', 'Database management apps', 'Database modeling apps', 'Database reporting apps', 'Debugging tools', 'Development apps', 'Disk cleanup and management apps', 'Documents', 'Driver update and management apps', 'E-book readers', 'E-commerce apps', 'E-mail marketing apps', 'Educational apps', 'Educational apps for kids', 'Encryption and security apps', 'Enterprise resource planning apps', 'Entertainment apps', 'File conversion apps', 'File transfer and synchronization apps', 'Finance apps', 'Firewall and intrusion detection apps', 'Game AI development apps', 'Game VR and AR development apps', 'Game accessibility apps', 'Game analytics and data visualization apps', 'Game community and social media apps', 'Game distribution and publishing apps', 'Game emulators', 'Game engines', 'Game launcher', 'Game marketing and promotion apps', 'Game monetization apps', 'Game motion capture apps', 'Game music composition apps', 'Game networking apps', 'Game physics engines', 'Game physics simulation apps', 'Game scriptwriting and story development apps', 'Game streaming and broadcasting apps', 'Graphic design apps', 'Health and fitness apps', 'Human resources management apps', 'Image editing and manipulation apps', 'Integrated development environments (IDEs)', 'Inventory management apps', 'Language learning apps', 'Map and navigation apps', 'Mind and body apps', 'Mind mapping and brainstorming apps', 'Multimedia', 'Music streaming apps', 'Network monitoring and management apps', 'News apps', 'Office Suite apps', 'PDF readers and editors', 'Parental control apps', 'Password management apps', 'Payroll management apps', 'Personal organization apps', 'Point-of-sale apps', 'Presentation and slide creation apps', 'Profiling tools', 'Programming and development apps', 'Project management apps', 'Remote access and control apps', 'Retail management apps', 'SEO and analytics apps', 'Screenshot and screen recording apps', 'Social media apps', 'Supply chain management apps', 'System information and diagnostic apps', 'System optimization and performance apps', 'Tax preparation and filing apps', 'Terminal emulators', 'Text editors', 'Time tracking and invoicing apps', 'Travel apps', 'Utilities apps', 'VPN apps', 'Video and audio compression apps', 'Video editing apps', 'Video streaming apps', 'Virtual and augmented reality apps', 'Virtual event and webinar apps', 'Virtual meeting and conference apps', 'Virtual reality content creation apps', 'Virtualization software', 'Voice recognition apps', 'Weather apps', 'Web Browsers', 'Windows customization apps']
-    print(len(allcategories))
     for i in allcategories:
         listbox.insert(END,i)
     listbox.pack(side=LEFT, fill=Y)
@@ -496,19 +1159,6 @@ def mainwindow():
     listbox.bind("<Button-1>",selectcategory)
     font = ("Segoe UI variable", 9)
     listbox.config(font=font)
-
-    # pack the widgets
-    title_bar.pack(fill=X)
-
-    close_button.pack(side=RIGHT, ipadx=7, ipady=1)
-    expand_button.pack(side=RIGHT, ipadx=7, ipady=1)
-    minimize_button.pack(side=RIGHT, ipadx=7, ipady=1)
-    appicon = PhotoImage(file=r"images\softhuḃicon.png")
-    appicon = appicon.subsample(6, 6)
-    label = Label(title_bar, image=appicon)
-    label.pack(side=LEFT)
-    title_bar_title.pack(side=LEFT, padx=10)
-    window.pack(expand=1, fill=BOTH)
 
     on = PhotoImage(file=r"images\darkicon.png")
     on = on.subsample(4, 4)
@@ -542,60 +1192,25 @@ def mainwindow():
 
 
     theme = ttk.Button(title_bar, image=on, padding=0,command=lambda: switch())
-    theme.place(relx=0.735, rely=0.075)
+    theme.place(relx=0.78, rely=0.075)
     if mode == "light":
         theme.config(image=off)
+    elif mode == "dark":
+        theme.config(image=on)
     
     def openlink():
         webbrowser.open_new("https://github.com/ACExSWAROOP")
 
-    abouticon = PhotoImage(file=r"images\114448.png")
-    abouticon = abouticon.subsample(16, 16)
+    abouticon = PhotoImage(file=r"images\about.png")
+    abouticon = abouticon.subsample(22, 22)
     aboutbutton = ttk.Button(title_bar, image=abouticon, padding=0, command=lambda: openlink())
-    aboutbutton.place(relx=0.80, rely=0.075)
+    aboutbutton.place(relx=0.1, rely=0.15)
 
     settingsicon= PhotoImage(file=r"images\settings.png")
     settingsicon = settingsicon.subsample(16, 16)
     settingsbutton = ttk.Button(title_bar, image=settingsicon, padding=0, command=lambda: settingswindow())
     settingsbutton.place(relx=0.84, rely=0.075)
     settingsbutton.bind("<MouseWheel>", lambda event: my_canvas.yview_scroll(-1*(event.delta//120), "units"))
-
-
-    def changex_on_hovering(event):
-        global close_button
-        close_button['bg'] = 'red'
-
-    def returnx_to_normalstate(event):
-        global close_button
-        themecheck()
-        if mode =="dark":
-            close_button['bg'] = '#1c1c1c'
-        elif mode =="light":
-            close_button['bg'] = '#fafafa'
-
-    def change_size_on_hovering(event):
-        global expand_button
-        expand_button['bg'] = '#999999'
-
-    def return_size_on_hovering(event):
-        global expand_button
-        themecheck()
-        if mode =="dark":
-            expand_button['bg'] = '#1c1c1c'
-        if mode =="light":
-            expand_button['bg'] = '#fafafa'
-
-    def changem_size_on_hovering(event):
-        global minimize_button
-        minimize_button['bg'] = '#999999'
-
-    def returnm_size_on_hovering(event):
-        global minimize_button
-        themecheck()
-        if mode =="dark":
-            minimize_button['bg'] = '#1c1c1c'
-        if mode =="light":
-            minimize_button['bg'] = '#fafafa'
 
     """def get_pos(event):  # this is executed when the title bar is clicked to move the window
         if main.maximized == False:
@@ -704,6 +1319,7 @@ def mainwindow():
                 chococheck(type ,id ,appname)
             elif source=="🌐 Scoop":
                 scoopcheck(type,id,appname)
+        
 
     def chococheck(type , id, appname):
         result = subprocess.run("where choco.exe", shell=True, capture_output=True)
@@ -730,62 +1346,35 @@ def mainwindow():
         if x == 0:
             installchange.set("Install")
         elif x == 1:    
-            def is_admin():
-                try:
-                    return ctypes.windll.shell32.IsUserAnAdmin()
-                except:
-                    return False
+            subprocess.run(f"choco install {id} -y", shell=True)
+            installchange.set("Installed")
+            installbutton["state"] = DISABLED
+            uninstallbutton["state"] = NORMAL
+            updatebutton["state"] = NORMAL
 
-            if is_admin():
-                subprocess.run(f"choco install {id} -y", shell=True)
-                installchange.set("Installed")
-                uninstallbutton["state"] = NORMAL
-                updatebutton["state"] = NORMAL
-            else:
-                main.withdraw()
-                ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, __file__, None, 1)
             
     def chocouninstall(id,appname):
         text = "do you want to uninstall " + appname + "?"
-        installchange.set("Uninstalling...")
+        uninstallchange.set("Uninstalling...")
         x = messagebox.askyesno("confirmation", text)
         if x == 0:
             uninstallchange.set("Uninstall")
         elif x == 1:    
-            def is_admin():
-                    try:
-                        return ctypes.windll.shell32.IsUserAnAdmin()
-                    except:
-                        return False
-
-            if is_admin():
-                subprocess.run(f"choco uninstall {id} -y", shell=True)
-                uninstallchange.set("Uninstalled")
-                installbutton["state"] = NORMAL
-                updatebutton["state"] = NORMAL
-            else:
-                main.withdraw()
-                ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, __file__, None, 1)
-
+            subprocess.run(f"choco uninstall {id} -y", shell=True)
+            uninstallchange.set("Uninstalled")
+            installbutton["state"] = NORMAL
+            updatebutton["state"] = DISABLED
+            uninstallbutton["state"] = DISABLED
+        
     def chocoupdate(id,appname):
         text = "do you want to Update " + appname + "?"
-        installchange.set("Updating...")
+        updatechange.set("Updating...")
         x = messagebox.askyesno("confirmation", text)
         if x == 0:
             updatechange.set("Update")
         elif x == 1:  
-            def is_admin():
-                    try:
-                        return ctypes.windll.shell32.IsUserAnAdmin()
-                    except:
-                        return False
-
-            if is_admin():
-                subprocess.run(f"choco upgrade {id} -y", shell=True)
-                updatechange.set("Updated")
-            else:
-                main.withdraw()
-                ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, __file__, None, 1)
+            subprocess.run(f"choco upgrade {id} -y", shell=True)
+            updatechange.set("Updated")
 
     def scoopcheck(type,id,appname):
         install_cmd = "powershell.exe -Command iex (new-object net.webclient).downloadstring('https://get.scoop.sh')"
@@ -810,6 +1399,7 @@ def mainwindow():
             install_cmd = f"scoop install {ids[1]}"
             subprocess.run(install_cmd, shell=True)
             installchange.set("Installed")
+            installbutton["state"] = DISABLED
             uninstallbutton["state"] = NORMAL
             updatebutton["state"] = NORMAL
 
@@ -824,11 +1414,12 @@ def mainwindow():
             subprocess.run(uninstall_cmd, shell=True)
             uninstallchange.set("Uninstalled")
             installbutton["state"] = NORMAL
-            updatebutton["state"] = NORMAL
+            updatebutton["state"] = DISABLED
+            uninstallbutton["state"] = DISABLED
 
     def scoopupdate(id,appname):
         text = "do you want to Update " + appname + "?"
-        installchange.set("Updating...")
+        updatechange.set("Updating...")
         x = messagebox.askyesno("confirmation", text)
         if x == 0:
             updatechange.set("Update")
@@ -861,6 +1452,7 @@ def mainwindow():
                 wingetuninstall(id, appname)
 
     def wingetinstall(id, appname):
+        global installbutton,uninstallchange,updatebutton
         text = "do you want to install " + appname + "?"
         installchange.set("Installing...")
         x = messagebox.askyesno("confirmation", text)
@@ -870,14 +1462,19 @@ def mainwindow():
             try:
                 subprocess.run(["winget", "install", "--id", id], check=True)
                 installchange.set("Installed")
+                uninstallchange.set("Uninstall")
+                uninstallbutton["state"] = NORMAL
+                updatebutton["state"] = NORMAL
                 break
             except subprocess.CalledProcessError:
                 uninstallchange.set("Installed")
+                installbutton["state"] = DISABLED
                 uninstallbutton["state"] = NORMAL
                 updatebutton["state"] = NORMAL
                 break
 
     def wingetupgrade(id, appname):
+        global installbutton,uninstallchange,updatebutton
         updatechange.set("Updating...")
         text = "do you want to update " + appname + "?"
         x = messagebox.askyesno("confirmation", text)
@@ -893,6 +1490,7 @@ def mainwindow():
                 break
 
     def wingetuninstall(id, appname):
+        global installbutton,uninstallchange,updatebutton
         uninstallchange.set("Uninstalling...")
         text = "do you want to uninstall " + appname + "?"
         x = messagebox.askyesno("confirmation", text)
@@ -902,11 +1500,15 @@ def mainwindow():
             try:
                 subprocess.run(["winget", "uninstall", "--id", id], check=True)
                 uninstallchange.set("Uninstalled")
+                installchange.set("Install")
+                installbutton["state"] = NORMAL
+                updatebutton["state"] = NORMAL
                 break
             except subprocess.CalledProcessError:
                 uninstallchange.set("Uninstalled")
                 installbutton["state"] = NORMAL
-                updatebutton["state"] = NORMAL
+                updatebutton["state"] = DISABLED
+                uninstallbutton["state"] = DISABLED
                 break
 
     # install app via web,if not in winget
@@ -932,7 +1534,7 @@ def mainwindow():
                 x = messagebox.askretrycancel("no internet connection.", "no internet connection please try later.")
 
     sec = Frame(window)
-    sec.pack(fill=X, side=BOTTOM)
+    sec.pack(fill=X, side=BOTTOM )
 
     my_canvas = Canvas(window)
     my_canvas.pack(side=LEFT, fill=BOTH, expand=1)
@@ -982,11 +1584,10 @@ def mainwindow():
         frame3 = Frame(canvass)
         canvass.create_window((25, 15), window=frame3, anchor="nw")
         frame3.bind("<MouseWheel>", lambda event: my_canvas.yview_scroll(-1*(event.delta//120), "units"))
-        
         sectionframe = Frame(frame3)
         sectionframe.grid(row=0, column=0, pady=38, padx=15)
 
-        section = ttk.Label(sectionframe, text=type, font=("Segou UI variable", 12))
+        section = ttk.Label(sectionframe, text=type, font=("Segou UI variable", 15))
         section.grid(row=0, column=0, pady=15, padx=15)
         count += 1
 
@@ -995,7 +1596,43 @@ def mainwindow():
         returns=[sectionframe,canvass]
         return returns
 
-    def hoverwindow(e, img, name, desc, pack):
+    def loadingscreen(e, img, name, desc, pack):
+        global load
+        load = Toplevel()
+        load.overrideredirect(True)
+        main.attributes("-alpha", 0.95)
+        app_width = 640
+        app_height = 320
+        screenwidth = load.winfo_screenwidth()
+        screenheight = load.winfo_screenheight()
+        x = (screenwidth / 2) - (app_width / 2)
+        y = (screenheight / 2) - (app_height / 2)
+        load.geometry(f'{app_width}x{app_height}+{int(x)}+{int(y)}')
+        if mode == "dark":
+            bg_image = ImageTk.PhotoImage(Image.open(r"images\loading dark.png"))
+            label1 = Label(load, image=bg_image)
+            label1.pack()
+        elif mode == "light":
+            bg_image = ImageTk.PhotoImage(Image.open(r"images\loading light.png"))
+            label1 = Label(load, image=bg_image)
+            label1.pack()
+        source = name.splitlines()[2]
+        load.update()
+        global packages
+        packages=checkpack(source)
+        load.after(3000,lambda: hoverwindow(img, name, desc, pack))
+        load.mainloop()
+
+    def hoverwindow(img, name, desc, pack):
+        with open("settings.json", "r") as x:
+            try:
+                data = json.load(x)
+                chocoval=data["choco"]
+                scoopval=data["scoop"]
+                gitval=data["git"]
+                urlval=data["url"]
+            except json.JSONDecodeError:
+                pass
         global hoverwin
         hoverwin = Toplevel()
         hoverwin.overrideredirect(True)
@@ -1011,6 +1648,12 @@ def mainwindow():
         appname = name.splitlines()[0]
         rating = name.splitlines()[1]
         source = name.splitlines()[2]
+        main.lift()
+        hoverwin.lift()
+        main.bind("<Button-3>", lambda e: closehover("hoverwin"))
+        hoverwin.bind("<Button-3>", lambda e: closehover("hoverwin"))
+        main.bind("<Button-1>", lambda e: closehover("hoverwin"))
+
         namelabel = ttk.Label(hoverwin, text=appname, font=("Segou UI variable", 18))
         namelabel.place(relx=0.31, rely=0.1)
         namelabel1 = ttk.Label(hoverwin, text=rating, font=("Segou UI variable", 18))
@@ -1021,52 +1664,99 @@ def mainwindow():
         desclabel.place(relx=0.05, rely=0.6)
         sourcelabel =ttk.Label(hoverwin, text=source, font=("Segou UI variable", 18))
         sourcelabel.place(relx=0.7, rely=0.2)
-        main.bind("<Button-3>", lambda e: closehover())
-        hoverwin.bind("<Button-3>", lambda e: closehover())
-        main.bind("<Button-1>", lambda e: closehover())
 
         global installchange
         global installbutton
         installchange = StringVar()
         installbutton = ttk.Button(hoverwin, textvariable=installchange, width=12,
-                                   command=lambda: intcheck("install", pack, appname, source))
+                                command=lambda: intcheck("install", pack, appname, source))
         installbutton.place(relx=0.28, rely=0.325)
         global updatechange
         global updatebutton
         updatechange = StringVar()
         updatechange.set("Update")
         updatebutton = ttk.Button(hoverwin, textvariable=updatechange, width=12,
-                                  command=lambda: intcheck("update", pack, appname, source))
+                                command=lambda: intcheck("update", pack, appname, source))
         updatebutton.place(relx=0.48, rely=0.325)
         global uninstallchange
         global uninstallbutton
         uninstallchange = StringVar()
         uninstallchange.set("Uninstall")
         uninstallbutton = ttk.Button(hoverwin, textvariable=uninstallchange, width=12,
-                                     command=lambda: intcheck("uninstall", pack, appname, source))
+                                    command=lambda: intcheck("uninstall", pack, appname, source))
         uninstallbutton.place(relx=0.68, rely=0.325)
 
+        def closeloading():
+            load.destroy()
+
+        global temppack
         temppack=pack
         if source=="🌐 Scoop":
             temppack=pack.split()
             temppack=temppack[1]
 
         if temppack not in packages:
+            closeloading()
             installchange.set("Install")
             uninstallbutton["state"] = DISABLED
             updatebutton["state"] = DISABLED
 
         elif temppack in packages:
+            closeloading()
             installchange.set("Installed")
             installbutton["state"] = DISABLED
+    
+        def is_admin():
+                    try:
+                        return ctypes.windll.shell32.IsUserAnAdmin()
+                    except:
+                        return False
+        def adminrun():
+            main.withdraw()
+            if ctypes.windll.shell32.IsUserAnAdmin() == False:
+                # Not running as admin, re-run as admin
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                subprocess.Popen([ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, __file__, None, 1)] + sys.argv, startupinfo=startupinfo, creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NO_WINDOW)
+                sys.exit()
+            else:
+                # Running as admin, hide terminal window
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                subprocess.Popen([ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, __file__, None, 1)], startupinfo=startupinfo, creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NO_WINDOW)
+        if source == "🌐 Chocolatey":
+            if is_admin():
+                if chocoval == 0:
+                    notenabled = ttk.Label(hoverwin, text="Chocolatey packages are disabled.\n    Enable in the settings to use.", font=("Segou UI variable", 20  ))
+                    notenabled.place(relx=0, rely=0)
+                    notenabled.configure(borderwidth=120)
+            else:
+                notadmin = ttk.Label(hoverwin, text="The app is currently not running in admin mode.\n      Please run the app as administrator mode \n               to install Chocolatey apps. ", font=("Segou UI variable", 14  ))
+                notadmin.place(relx=0, rely=0)
+                notadmin.configure(borderwidth=120)
+                adminbutton =ttk.Button(hoverwin,text="Run as Adminstrator",command=lambda:adminrun(),width=18)
+                adminbutton.place(relx=0.37,rely=0.7)
+
+        if scoopval == 0:
+            if source == "🌐 Scoop":
+                notenabled = ttk.Label(hoverwin, text="   Scoop packages are disabled.\n   Enable in the settings to use.", font=("Segou UI variable", 20  ))
+                notenabled.place(relx=0, rely=0)
+                notenabled.configure(borderwidth=120)
 
         hoverwin.mainloop()
 
-    def closehover():
-        hoverwin.destroy()
+    def closehover(winname):
+        main.attributes("-alpha", 1)
+        if winname == "hoverwin":
+            hoverwin.destroy()
+        elif winname == "instwin":
+            instwin.destroy()
+        elif winname =="updwin":
+            updwin.destroy()
         
     def remold():
         try:
+            main.attributes("-alpha", 1)
             hoverwin.destroy()
         except NameError:
             pass
@@ -1338,7 +2028,7 @@ def mainwindow():
     unitypack = "Unity.Unity.2022"
     # blender
     blendericon = PhotoImage(file=r"images\7c3abb1e942ffcdb9a64676a0af8c65c0d4b4497.png")
-    blenderimage = blendericon.subsample(12, 12)
+    blenderimage = blendericon.subsample(8, 8)
     blenderdesc = "Blender is the Free and Open Source 3D creation suite. It supports the entirety of the 3D " \
                   "pipeline\n—modeling, sculpting, rigging, 3D and 2D animation, simulation, rendering, compositing, " \
                   "motion \ntracking and video editing. "
@@ -1750,26 +2440,52 @@ def mainwindow():
     librecadimage = librecadicon.subsample(20, 20)
     librecaddesc = "LibreCAD is a free Open Source CAD application for Windows, Apple and Linux. Support and \ndocumentation is free from our large, dedicated community of users, contributors and developers."
     librecadpack = "librecad"
+    #oceanaudio
+    oceanaudioicon = PhotoImage(file=r"images\Ocenaudio-Icon.png")
+    oceanaudioimage = oceanaudioicon.subsample(5, 5)
+    oceanaudiodesc = "ocenaudio is a cross-platform, easy to use, fast and functional audio editor."
+    oceanaudiopack = "Ocenaudio.Ocenaudio"
+    #lmms
+    lmmsicon = PhotoImage(file=r"images\lmms-icon.png")
+    lmmsimage = lmmsicon.subsample(8, 8)
+    lmmsdesc = "LMMS is a sound generation system, synthesizer, beat/bassline editor and MIDI control \nsystem which can power an entire home studio."
+    lmmspack = "lmms"
+    #wavosaur
+    wavosauricon = PhotoImage(file=r"images\1471170491_wavosaur2016_story.png")
+    wavosaurimage = wavosauricon.subsample(7, 7)
+    wavosaurdesc = "Wavosaur is a cool free sound editor, audio editor, wav editor software for editing, \nprocessing and recording sounds, wav and mp3 files."
+    wavosaurpack = "wavosaur"
+    #reaper
+    reapericon = PhotoImage(file=r"images\imgbin-digital-audio-workstation-reaper-computer-icons-macos-others-aJUAv8rWQXYa6tSi3NjHMVEWK.png")
+    reaperimage = reapericon.subsample(7, 7)
+    reaperdesc = "REAPER is a complete digital audio production application for Windows and OS X, \noffering a full multitrack audio and MIDI recording, editing, processing, mixing and mastering toolset."
+    reaperpack = "reaper"
+    #exactaudiocopy
+    exactaudiocopyicon = PhotoImage(file=r"images\Exact-Audio-Copy-icon.png")
+    exactaudiocopyimage = exactaudiocopyicon.subsample(4, 4)
+    exactaudiocopydesc = "Exact Audio Copy is a audio grabber for audio CDs using standard CD and DVD-ROM drives."
+    exactaudiocopypack = "eac"
+    #simpleradiorecorder
+    simpleradiorecordericon = PhotoImage(file=r"images\simpleradiorecorder.1.2.7.100.png")
+    simpleradiorecorderimage = simpleradiorecordericon.subsample(1, 1)
+    simpleradiorecorderdesc = "Did you ever want a simple program to record your podcasts, Internet \nradio, Pandora*, Spotify*, or satellite radio* (Sirius or XM)? Don't go any further. Simple Radio Recorder \nwill do it for you. And most of all, if you register within the first 30 days, it is also FREE!"
+    simpleradiorecorderpack = "simpleradiorecorder"
+    #easeustodo
+    easeustodoicon = PhotoImage(file=r"images\1612772936_easeus-todo-backup.png")
+    easeustodoimage = easeustodoicon.subsample(5, 5)
+    easeustododesc = "EaseUS Todo Backup Home covers all backup types: individual files and folders, \nwhole drives or partitions, or a full system backup. What's more, It supports to 'restore system to dissimilar \nhardware', which is an efficient way for you to migrate the current system to dissimilar \nhardware with all necessities saved on the system partition."
+    easeustodopack = "EaseUS.TodoBackup"
 
-    #Clara.io
-    #cinema4d
-    #houndini
-    #zbrush
-    #moho
-    #solidworks
-    #rhino
-    #lightwave3d
-    #mattercontrol
-    #Repetier-Host
-    #KISSlicer
-    #
+
+    
     #################################################################################################################
+        
     #3D modeling and animation apps
     returns = addapps("3D modeling and animation apps")
     sectionframe= returns[0]
     canvass1=returns[1]
     for i in range(1, 30, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass1.xview_scroll(-1*(event.delta//120), "units"))
     
@@ -1797,19 +2513,19 @@ def mainwindow():
     for i in range(2, len(threeDanimationandmodellingappslists) * 2, 2):
         if i / 2 < len(threeDanimationandmodellingappslists):
             button = threeDanimationandmodellingappslists[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=threeDanimationandmodellingappsimgs[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=threeDanimationandmodellingappsdescs[i // 2],
-                                                pckg=threeDanimationandmodellingappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
-                                                                                        buttondesc, pckg)])
+                                                pckg=threeDanimationandmodellingappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
+                                                                                        buttondesc, pckg)]),
             button.bind("<MouseWheel>", lambda event: canvass1.xview_scroll(-1*(event.delta//120), "units"))
-
+            
     #3D printing apps
     returns = addapps("3D printing apps")
     sectionframe= returns[0]
     canvass2=returns[1]
     for i in range(1, 8, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass2.xview_scroll(-1*(event.delta//120), "units"))
 
@@ -1827,10 +2543,10 @@ def mainwindow():
     for i in range(2, len(threeDprintingapps) * 2, 2):
         if i / 2 < len(threeDprintingapps):
             button = threeDprintingapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=threeDprintingappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=threeDprintingappsdescs[i // 2],
-                                                pckg=threeDprintingappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=threeDprintingappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass2.xview_scroll(-1*(event.delta//120), "units"))
     
@@ -1839,7 +2555,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass3=returns[1]
     for i in range(1, 12, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass3.xview_scroll(-1*(event.delta//120), "units"))
 
@@ -1859,10 +2575,10 @@ def mainwindow():
     for i in range(2, len(threeDrenderingapps) * 2, 2):
         if i / 2 < len(threeDrenderingapps):
             button = threeDrenderingapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=threeDrenderingappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=threeDrenderingappsdescs[i // 2],
-                                                pckg=threeDrenderingappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=threeDrenderingappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass3.xview_scroll(-1*(event.delta//120), "units"))
     
@@ -1871,7 +2587,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass4=returns[1]
     for i in range(1, 8, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass4.xview_scroll(-1*(event.delta//120), "units"))
     meshlab=ttk.Button(sectionframe, image=meshlabimage, text="MeshLAB \n★★★★☆ 4.2\n🌐 Winget", width=15, compound=LEFT)
@@ -1887,10 +2603,10 @@ def mainwindow():
     for i in range(2, len(threeDscanningapps) * 2, 2):
         if i / 2 < len(threeDscanningapps):
             button = threeDscanningapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=threeDscanningappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=threeDscanningappsdescs[i // 2],
-                                                pckg=threeDscanningappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=threeDscanningappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass4.xview_scroll(-1*(event.delta//120), "units"))
     # Accounting and financial management apps
@@ -1898,7 +2614,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass5=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass5.xview_scroll(-1*(event.delta//120), "units"))
     GnuCash=ttk.Button(sectionframe, image=GnuCashimage, text="GnuCash \n★★★★☆ 4.2\n🌐 Winget", width=15, compound=LEFT)
@@ -1914,10 +2630,10 @@ def mainwindow():
     for i in range(2, len(afmaapps) * 2, 2):
         if i / 2 < len(afmaapps):
             button = afmaapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=afmaappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=afmaappsdescs[i // 2],
-                                                pckg=afmaappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=afmaappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass5.xview_scroll(-1*(event.delta//120), "units"))
     
@@ -1926,22 +2642,31 @@ def mainwindow():
     sectionframe= returns[0]
     canvass6=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass6.xview_scroll(-1*(event.delta//120), "units"))
+    
+    audacity = ttk.Button(sectionframe, image=audacityimage, text="Audacity\n★★★★☆ 4.2\n🌐 Winget", width=15, compound=LEFT)
+    oceanaudio = ttk.Button(sectionframe, image=oceanaudioimage, text="Oceanaudio \n★★★★☆ 4.2\n🌐 Winget", width=15, compound=LEFT)
+    lmms = ttk.Button(sectionframe, image=lmmsimage, text="LMMS \n★★★★☆ 4.2\n🌐 Chocolatey", width=15, compound=LEFT)
+    wavosaur= ttk.Button(sectionframe, image=wavosaurimage, text="Wavosaur \n★★★★☆ 4.2\n🌐 Chocolatey", width=15, compound=LEFT)
+    reaper= ttk.Button(sectionframe, image=reaperimage, text="Reaper \n★★★★☆ 4.2\n🌐 Chocolatey", width=15, compound=LEFT)
+    exactaudiocopy= ttk.Button(sectionframe, image=exactaudiocopyimage, text="Exact Audio Copy \n★★★★☆ 4.2\n🌐 Chocolatey", width=15, compound=LEFT)
+    simpleradiorecorder= ttk.Button(sectionframe, image=simpleradiorecorderimage, text="Simple Radio Recorder \n★★★★☆ 4.2\n🌐 Chocolatey", width=15, compound=LEFT)
+    
     # placements of all Audio recording and editing apps
-    areapps = ["dummy"]
-    areappsimages = ["dummy"]
-    areappsdescs = ["dummy"]
-    areappspacknames = ["dummy"]
+    areapps = ["dummy",audacity,oceanaudio,lmms,wavosaur,reaper,exactaudiocopy,simpleradiorecorder]
+    areappsimages = ["dummy",audacityimage,oceanaudioimage,lmmsimage,wavosaurimage,reaperimage,exactaudiocopyimage,simpleradiorecorderimage]
+    areappsdescs = ["dummy",audacitydesc,oceanaudiodesc,lmmsdesc,wavosaurdesc,reaperdesc,exactaudiocopydesc,simpleradiorecorderdesc]
+    areappspacknames = ["dummy",audacitypack,oceanaudiopack,lmmspack,wavosaurpack,reaperpack,exactaudiocopypack,simpleradiorecorderpack]
 
     for i in range(2, len(areapps) * 2, 2):
         if i / 2 < len(areapps):
             button = areapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=areappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=areappsdescs[i // 2],
-                                                pckg=areappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=areappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass6.xview_scroll(-1*(event.delta//120), "units"))
     # Augmented reality content creation apps
@@ -1949,7 +2674,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass7=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass7.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Augmented reality content creation apps
@@ -1961,10 +2686,10 @@ def mainwindow():
     for i in range(2, len(arccapps) * 2, 2):
         if i / 2 < len(arccapps):
             button = arccapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=arccappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=arccappsdescs[i // 2],
-                                                pckg=arccappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=arccappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass7.xview_scroll(-1*(event.delta//120), "units"))
     # Backup and recovery apps
@@ -1972,22 +2697,25 @@ def mainwindow():
     sectionframe= returns[0]
     canvass8=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass8.xview_scroll(-1*(event.delta//120), "units"))
+    
+    easeustodo = ttk.Button(sectionframe, image=easeustodoimage, text="Ease US To Do Backup\n★★★★☆ 4.2\n🌐 Winget", width=15, compound=LEFT)
+    
     # placements of all Backup and recovery apps
-    barapps = ["dummy"]
-    barappsimages = ["dummy"]
-    barappsdescs = ["dummy"]
-    barappspacknames = ["dummy"]
+    barapps = ["dummy",easeustodo]
+    barappsimages = ["dummy",easeustodoimage]
+    barappsdescs = ["dummy",easeustododesc]
+    barappspacknames = ["dummy",easeustodopack]
 
     for i in range(2, len(barapps) * 2, 2):
         if i / 2 < len(barapps):
             button = barapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=barappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=barappsdescs[i // 2],
-                                                pckg=barappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=barappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass8.xview_scroll(-1*(event.delta//120), "units"))
 
@@ -1996,7 +2724,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass9=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass9.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Business apps
@@ -2008,10 +2736,10 @@ def mainwindow():
     for i in range(2, len(businessapps) * 2, 2):
         if i / 2 < len(businessapps):
             button = businessapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=businessappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=businessappsdescs[i // 2],
-                                                pckg=businessappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=businessappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass9.xview_scroll(-1*(event.delta//120), "units"))
     
@@ -2020,7 +2748,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass10=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass10.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all CAD software
@@ -2032,10 +2760,10 @@ def mainwindow():
     for i in range(2, len(cadapps) * 2, 2):
         if i / 2 < len(cadapps):
             button = cadapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=cadappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=cadappsdescs[i // 2],
-                                                pckg=cadappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=cadappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass10.xview_scroll(-1*(event.delta//120), "units"))
     
@@ -2044,7 +2772,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass11=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass11.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Cloud storage and syncing apps
@@ -2056,10 +2784,10 @@ def mainwindow():
     for i in range(2, len(cssapps) * 2, 2):
         if i / 2 < len(cssapps):
             button = cssapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=cssappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=cssappsdescs[i // 2],
-                                                pckg=cssappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=cssappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass11.xview_scroll(-1*(event.delta//120), "units"))
     
@@ -2068,7 +2796,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass12=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass12.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Code editors
@@ -2080,10 +2808,10 @@ def mainwindow():
     for i in range(2, len(codeeditorapps) * 2, 2):
         if i / 2 < len(codeeditorapps):
             button = codeeditorapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=codeeditorappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=codeeditorappsdescs[i // 2],
-                                                pckg=codeeditorappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=codeeditorappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass12.xview_scroll(-1*(event.delta//120), "units"))
     # Command line utilities
@@ -2091,7 +2819,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass13=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass13.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Command line utilities
@@ -2103,10 +2831,10 @@ def mainwindow():
     for i in range(2, len(cluapps) * 2, 2):
         if i / 2 < len(cluapps):
             button = cluapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=cluappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=cluappsdescs[i // 2],
-                                                pckg=cluappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=cluappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass13.xview_scroll(-1*(event.delta//120), "units"))
 
@@ -2115,7 +2843,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass14=returns[1]
     for i in range(1, 28, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass14.xview_scroll(-1*(event.delta//120), "units"))
     discord = ttk.Button(sectionframe, image=discordimage, text="Discord\n★★★★☆ 4.5\n🌐 Winget", width=15, compound=LEFT)
@@ -2148,9 +2876,9 @@ def mainwindow():
     for i in range(2, len(commlists) * 2, 2):
         if i / 2 < len(commlists):
             button = commlists[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=commimgs[i // 2], buttonname=button.cget('text'),
-                                             buttondesc=commdescs[i // 2], pckg=commpacknames[i // 2]: [remold(),hoverwindow(
+                                             buttondesc=commdescs[i // 2], pckg=commpacknames[i // 2]: [remold(),loadingscreen(
                 event, buttonimg, buttonname, buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass14.xview_scroll(-1*(event.delta//120), "units"))
 
@@ -2159,7 +2887,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass15=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass15.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Creativity apps
@@ -2171,10 +2899,10 @@ def mainwindow():
     for i in range(2, len(Creativityapps) * 2, 2):
         if i / 2 < len(Creativityapps):
             button = Creativityapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=Creativityappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=Creativityappsdescs[i // 2],
-                                                pckg=Creativityappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=Creativityappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass15.xview_scroll(-1*(event.delta//120), "units"))
 
@@ -2183,7 +2911,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass16=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass16.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Customer relationship management apps
@@ -2195,10 +2923,10 @@ def mainwindow():
     for i in range(2, len(crmapps) * 2, 2):
         if i / 2 < len(crmapps):
             button = crmapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=crmappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=crmappsdescs[i // 2],
-                                                pckg=crmappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=crmappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass16.xview_scroll(-1*(event.delta//120), "units"))
     # Data backup apps
@@ -2206,7 +2934,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass17=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass17.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Data backup apps
@@ -2218,10 +2946,10 @@ def mainwindow():
     for i in range(2, len(dbapps) * 2, 2):
         if i / 2 < len(dbapps):
             button = dbapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=dbappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=dbappsdescs[i // 2],
-                                                pckg=dbappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=dbappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass17.xview_scroll(-1*(event.delta//120), "units"))
     # Data recovery apps
@@ -2229,7 +2957,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass18=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass18.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Data recovery apps
@@ -2241,10 +2969,10 @@ def mainwindow():
     for i in range(2, len(drapps) * 2, 2):
         if i / 2 < len(drapps):
             button = drapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=drappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=drappsdescs[i // 2],
-                                                pckg=drappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=drappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass18.xview_scroll(-1*(event.delta//120), "units"))
     # Database administration apps
@@ -2252,7 +2980,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass19=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass19.xview_scroll(-1*(event.delta//120), "units"))
 
@@ -2265,10 +2993,10 @@ def mainwindow():
     for i in range(2, len(daapps) * 2, 2):
         if i / 2 < len(daapps):
             button = daapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=daappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=daappsdescs[i // 2],
-                                                pckg=daappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=daappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass19.xview_scroll(-1*(event.delta//120), "units"))
     # Database design and development apps
@@ -2276,7 +3004,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass20=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass20.xview_scroll(-1*(event.delta//120), "units"))
 
@@ -2289,10 +3017,10 @@ def mainwindow():
     for i in range(2, len(dddapps) * 2, 2):
         if i / 2 < len(dddapps):
             button = dddapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=dddappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=dddappsdescs[i // 2],
-                                                pckg=dddappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=dddappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass20.xview_scroll(-1*(event.delta//120), "units"))
     # Database management apps
@@ -2300,7 +3028,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass21=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass21.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Database management apps
@@ -2312,10 +3040,10 @@ def mainwindow():
     for i in range(2, len(dmapps) * 2, 2):
         if i / 2 < len(dmapps):
             button = dmapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=dmappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=dmappsdescs[i // 2],
-                                                pckg=dmappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=dmappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass21.xview_scroll(-1*(event.delta//120), "units"))
     # Database modelling apps
@@ -2323,7 +3051,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass22=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass22.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Database modelling apps
@@ -2335,10 +3063,10 @@ def mainwindow():
     for i in range(2, len(dmodaapps) * 2, 2):
         if i / 2 < len(dmodaapps):
             button = dmodaapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=dmodappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=dmodappsdescs[i // 2],
-                                                pckg=dmodappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=dmodappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass22.xview_scroll(-1*(event.delta//120), "units"))
 
@@ -2347,7 +3075,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass23=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass23.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Database reporting apps
@@ -2359,10 +3087,10 @@ def mainwindow():
     for i in range(2, len(drepapps) * 2, 2):
         if i / 2 < len(drepapps):
             button = drepapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=drepappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=drepappsdescs[i // 2],
-                                                pckg=drepappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=drepappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass23.xview_scroll(-1*(event.delta//120), "units"))
     # debugging tools
@@ -2370,7 +3098,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass24=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass24.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all debugging tools
@@ -2382,10 +3110,10 @@ def mainwindow():
     for i in range(2, len(debuggingtoolapps) * 2, 2):
         if i / 2 < len(debuggingtoolapps):
             button = debuggingtoolapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=debuggingtoolappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=debuggingtoolappsdescs[i // 2],
-                                                pckg=debuggingtoolappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=debuggingtoolappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass24.xview_scroll(-1*(event.delta//120), "units"))
     # development apps
@@ -2393,7 +3121,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass25=returns[1]
     for i in range(1, 44, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass25.xview_scroll(-1*(event.delta//120), "units"))
     git = ttk.Button(sectionframe, image=gitimage, text="Git\n★★★★☆ 4.8\n🌐 Winget", width=15, compound=LEFT)
@@ -2443,9 +3171,9 @@ def mainwindow():
     for i in range(2, len(devlists) * 2, 2):
         if i / 2 < len(devlists):
             button = devlists[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=devimgs[i // 2], buttonname=button.cget('text'),
-                                             buttondesc=devdescs[i // 2], pckg=devpacknames[i // 2]: [remold(),hoverwindow(event,
+                                             buttondesc=devdescs[i // 2], pckg=devpacknames[i // 2]: [remold(),loadingscreen(event,
                                                                                                                  buttonimg,
                                                                                                                  buttonname,
                                                                                                                  buttondesc,
@@ -2457,7 +3185,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass26=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass26.xview_scroll(-1*(event.delta//120), "units"))
 
@@ -2470,10 +3198,10 @@ def mainwindow():
     for i in range(2, len(dcmapps) * 2, 2):
         if i / 2 < len(dcmapps):
             button = dcmapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=dcmappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=dcmappsdescs[i // 2],
-                                                pckg=dcmappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=dcmappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass26.xview_scroll(-1*(event.delta//120), "units"))
 
@@ -2482,7 +3210,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass27=returns[1]
     for i in range(1, 16, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass27.xview_scroll(-1*(event.delta//120), "units"))
     onlyoffice = ttk.Button(sectionframe, image=onlyofficeimage, text="ONLYOFFICE \n★★★★☆ 4.5\n🌐 Winget", width=15,
@@ -2505,9 +3233,9 @@ def mainwindow():
     for i in range(2, len(Documentslists) * 2, 2):
         if i / 2 < len(Documentslists):
             button = Documentslists[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=Documentsimgs[i // 2], buttonname=button.cget('text'),
-                                             buttondesc=Documentsdescs[i // 2], pckg=Documentspacknames[i // 2]:[remold(), hoverwindow(
+                                             buttondesc=Documentsdescs[i // 2], pckg=Documentspacknames[i // 2]:[remold(), loadingscreen(
                 event, buttonimg, buttonname, buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass27.xview_scroll(-1*(event.delta//120), "units"))
 
@@ -2516,7 +3244,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass28=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass28.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Driver update and management apps
@@ -2528,10 +3256,10 @@ def mainwindow():
     for i in range(2, len(dumapps) * 2, 2):
         if i / 2 < len(dumapps):
             button = dumapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=dumaappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=dumappsdescs[i // 2],
-                                                pckg=dumappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=dumappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass28.xview_scroll(-1*(event.delta//120), "units"))
     # E-book readers
@@ -2539,7 +3267,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass29=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass29.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all E-book readers
@@ -2551,10 +3279,10 @@ def mainwindow():
     for i in range(2, len(ebookapps) * 2, 2):
         if i / 2 < len(ebookapps):
             button = ebookapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=ebookappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=ebookappsdescs[i // 2],
-                                                pckg=ebookappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=ebookappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass29.xview_scroll(-1*(event.delta//120), "units"))
 
@@ -2563,7 +3291,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass30=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass30.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all E-commerce apps
@@ -2575,10 +3303,10 @@ def mainwindow():
     for i in range(2, len(ecompps) * 2, 2):
         if i / 2 < len(ecompps):
             button = ecompps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=ecomappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=ecomappsdescs[i // 2],
-                                                pckg=ecomappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=ecomappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass30.xview_scroll(-1*(event.delta//120), "units"))
     # E-mail marketing apps
@@ -2586,7 +3314,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass31=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass31.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all E-mail marketing apps
@@ -2598,10 +3326,10 @@ def mainwindow():
     for i in range(2, len(emmpps) * 2, 2):
         if i / 2 < len(emmpps):
             button = emmpps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=emmappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=emmappsdescs[i // 2],
-                                                pckg=emmappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=emmappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass31.xview_scroll(-1*(event.delta//120), "units"))
 
@@ -2610,7 +3338,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass32=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass32.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Educational apps
@@ -2622,10 +3350,10 @@ def mainwindow():
     for i in range(2, len(eduapps) * 2, 2):
         if i / 2 < len(eduapps):
             button = eduapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=eduappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=eduappsdescs[i // 2],
-                                                pckg=eduappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=eduappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass32.xview_scroll(-1*(event.delta//120), "units"))
 
@@ -2634,7 +3362,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass33=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass33.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Educational apps
@@ -2646,10 +3374,10 @@ def mainwindow():
     for i in range(2, len(edukapps) * 2, 2):
         if i / 2 < len(edukapps):
             button = edukapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=edukappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=edukappsdescs[i // 2],
-                                                pckg=edukappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=edukappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass33.xview_scroll(-1*(event.delta//120), "units"))
     
@@ -2658,7 +3386,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass34=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass34.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Encryption and security apps
@@ -2670,10 +3398,10 @@ def mainwindow():
     for i in range(2, len(encsecapps) * 2, 2):
         if i / 2 < len(encsecapps):
             button = encsecapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=encsecappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=encsecappsdescs[i // 2],
-                                                pckg=encsecappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=encsecappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass34.xview_scroll(-1*(event.delta//120), "units"))
     
@@ -2682,7 +3410,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass35=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass35.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Enterprise resource planning apps
@@ -2694,10 +3422,10 @@ def mainwindow():
     for i in range(2, len(erpapps) * 2, 2):
         if i / 2 < len(erpapps):
             button = erpapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=erpappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=erpappsdescs[i // 2],
-                                                pckg=erpappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=erpappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass35.xview_scroll(-1*(event.delta//120), "units"))
 
@@ -2706,7 +3434,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass36=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass36.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Entertainment apps
@@ -2718,10 +3446,10 @@ def mainwindow():
     for i in range(2, len(entertainmentapps) * 2, 2):
         if i / 2 < len(entertainmentapps):
             button = entertainmentapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=entertainmentappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=entertainmentappsdescs[i // 2],
-                                                pckg=entertainmentappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=entertainmentappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass36.xview_scroll(-1*(event.delta//120), "units"))
     # File conversion apps
@@ -2729,7 +3457,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass37=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass37.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all File conversion apps
@@ -2741,10 +3469,10 @@ def mainwindow():
     for i in range(2, len(fconvapps) * 2, 2):
         if i / 2 < len(fconvapps):
             button = fconvapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=fconvappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=fconvappsdescs[i // 2],
-                                                pckg=fconvappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=fconvappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass37.xview_scroll(-1*(event.delta//120), "units"))
     # File transfer and sychronization apps
@@ -2752,7 +3480,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass38=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass38.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all File transfer and sychronization apps
@@ -2764,10 +3492,10 @@ def mainwindow():
     for i in range(2, len(ftsapps) * 2, 2):
         if i / 2 < len(ftsapps):
             button = ftsapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=ftsappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=ftsappsdescs[i // 2],
-                                                pckg=ftsappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=ftsappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass38.xview_scroll(-1*(event.delta//120), "units"))
     # Finance apps
@@ -2775,7 +3503,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass39=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass39.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Finance apps
@@ -2787,10 +3515,10 @@ def mainwindow():
     for i in range(2, len(Financeapps) * 2, 2):
         if i / 2 < len(Financeapps):
             button = Financeapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=Financeappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=Financeappsdescs[i // 2],
-                                                pckg=Financeappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=Financeappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass39.xview_scroll(-1*(event.delta//120), "units"))
     # Firewall and intrusion detection apps
@@ -2798,7 +3526,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass40=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass40.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Firewall and intrusion detection apps
@@ -2810,10 +3538,10 @@ def mainwindow():
     for i in range(2, len(fidapps) * 2, 2):
         if i / 2 < len(fidapps):
             button = fidapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=fidappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=fidappsdescs[i // 2],
-                                                pckg=fidappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=fidappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass40.xview_scroll(-1*(event.delta//120), "units"))
     #Game AI development apps
@@ -2821,7 +3549,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass41=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass41.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Game AI development apps
@@ -2833,10 +3561,10 @@ def mainwindow():
     for i in range(2, len(gameaiapps) * 2, 2):
         if i / 2 < len(gameaiapps):
             button = gameaiapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=gameaiappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=gameaiappsdescs[i // 2],
-                                                pckg=gameaiappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=gameaiappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass41.xview_scroll(-1*(event.delta//120), "units"))
     # Game VR and AR development apps
@@ -2844,7 +3572,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass42=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass42.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Game VR and AR development apps
@@ -2856,10 +3584,10 @@ def mainwindow():
     for i in range(2, len(gamevrarapps) * 2, 2):
         if i / 2 < len(gamevrarapps):
             button = gamevrarapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=gamevrarappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=gamevrarappsdescs[i // 2],
-                                                pckg=gamevrarappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=gamevrarappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass42.xview_scroll(-1*(event.delta//120), "units"))
     # Game accessibility apps
@@ -2867,7 +3595,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass43=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass43.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Game accessibility apps
@@ -2879,10 +3607,10 @@ def mainwindow():
     for i in range(2, len(gameaccapps) * 2, 2):
         if i / 2 < len(gameaccapps):
             button = gameaccapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=gameaccappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=gameaccappsdescs[i // 2],
-                                                pckg=gameaccappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=gameaccappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass43.xview_scroll(-1*(event.delta//120), "units"))
     # Game analytics and visualisation apps
@@ -2890,7 +3618,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass44=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass44.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Game analytics and visualisation apps
@@ -2902,10 +3630,10 @@ def mainwindow():
     for i in range(2, len(gameanalvisualapps) * 2, 2):
         if i / 2 < len(gameanalvisualapps):
             button = gameanalvisualapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=gameanalvisualappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=gameanalvisualappsdescs[i // 2],
-                                                pckg=gameanalvisualappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=gameanalvisualappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass44.xview_scroll(-1*(event.delta//120), "units"))
     # Game community and social media apps
@@ -2913,7 +3641,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass48=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass48.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Game community and social media apps
@@ -2925,10 +3653,10 @@ def mainwindow():
     for i in range(2, len(gamecommapps) * 2, 2):
         if i / 2 < len(gamecommapps):
             button = gamecommapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=gamecommappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=gamecommappsdescs[i // 2],
-                                                pckg=gamecommappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=gamecommappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass48.xview_scroll(-1*(event.delta//120), "units"))
 
@@ -2937,7 +3665,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass50=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass50.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Game distribution and publishing apps
@@ -2949,10 +3677,10 @@ def mainwindow():
     for i in range(2, len(gdpapps) * 2, 2):
         if i / 2 < len(gdpapps):
             button = gdpapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=gdpappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=gdpappsdescs[i // 2],
-                                                pckg=gdpappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=gdpappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass50.xview_scroll(-1*(event.delta//120), "units"))
     # Game emulators
@@ -2960,7 +3688,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass53=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass53.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Game emulators
@@ -2972,10 +3700,10 @@ def mainwindow():
     for i in range(2, len(gameemuapps) * 2, 2):
         if i / 2 < len(gameemuapps):
             button = gameemuapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=gameemuappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=gameemuappsdescs[i // 2],
-                                                pckg=gameemuappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=gameemuappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass53.xview_scroll(-1*(event.delta//120), "units"))
     # Game engines
@@ -2983,7 +3711,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass54=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass54.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Game engine apps
@@ -2995,10 +3723,10 @@ def mainwindow():
     for i in range(2, len(gengineapps) * 2, 2):
         if i / 2 < len(gengineapps):
             button = gengineapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=gengineappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=gengineappsdescs[i // 2],
-                                                pckg=gengineappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=gengineappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass54.xview_scroll(-1*(event.delta//120), "units"))
     # Games launcher
@@ -3007,7 +3735,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass128=returns[1]
     for i in range(1, 16, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass128.yview_scroll(-1*(event.delta//120), "units"))
 
@@ -3036,9 +3764,9 @@ def mainwindow():
     for i in range(2, len(gamelists) * 2, 2):
         if i / 2 < len(gamelists):
             button = gamelists[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=gameimgs[i // 2], buttonname=button.cget('text'),
-                                             buttondesc=gamedescs[i // 2], pckg=gamepacknames[i // 2]: [remold(),hoverwindow(
+                                             buttondesc=gamedescs[i // 2], pckg=gamepacknames[i // 2]: [remold(),loadingscreen(
                 event, buttonimg, buttonname, buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass128.xview_scroll(-1*(event.delta//120), "units"))
     
@@ -3047,7 +3775,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass58=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass58.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Game marketing and promotion apps
@@ -3059,10 +3787,10 @@ def mainwindow():
     for i in range(2, len(gmpapps) * 2, 2):
         if i / 2 < len(gmpapps):
             button = gmpapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=gmpappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=gmpappsdescs[i // 2],
-                                                pckg=gmpappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=gmpappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass58.xview_scroll(-1*(event.delta//120), "units"))
     # Game monetisation apps
@@ -3070,7 +3798,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass60=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass60.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Game monetisation apps
@@ -3082,10 +3810,10 @@ def mainwindow():
     for i in range(2, len(gmonetapps) * 2, 2):
         if i / 2 < len(gmonetapps):
             button = gmonetapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=gmonetappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=gmonetappsdescs[i // 2],
-                                                pckg=gmonetappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=gmonetappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass60.xview_scroll(-1*(event.delta//120), "units"))
     # Game motion capture apps
@@ -3093,7 +3821,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass61=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass61.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Game motion capture apps
@@ -3105,10 +3833,10 @@ def mainwindow():
     for i in range(2, len(gmotionapps) * 2, 2):
         if i / 2 < len(gmotionapps):
             button = gmotionapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=dgmotionappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=gmotionappsdescs[i // 2],
-                                                pckg=gmotionappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=gmotionappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass61.xview_scroll(-1*(event.delta//120), "units"))
     # Game music composition apps
@@ -3116,7 +3844,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass62=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass62.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Game music composition apps
@@ -3128,10 +3856,10 @@ def mainwindow():
     for i in range(2, len(gmusicapps) * 2, 2):
         if i / 2 < len(gmusicapps):
             button = gmusicapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=gmusicappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=gmusicappsdescs[i // 2],
-                                                pckg=gmusicappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=gmusicappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass62.xview_scroll(-1*(event.delta//120), "units"))
     # Game networking apps
@@ -3139,7 +3867,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass63=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass63.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Game networking apps
@@ -3151,10 +3879,10 @@ def mainwindow():
     for i in range(2, len(gnetworkapps) * 2, 2):
         if i / 2 < len(gnetworkapps):
             button = gnetworkapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=gnetworkappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=gnetworkappsdescs[i // 2],
-                                                pckg=gnetworkappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=gnetworkappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass63.xview_scroll(-1*(event.delta//120), "units"))
     # Game physics engines
@@ -3162,7 +3890,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass64=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass64.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Game physics engines
@@ -3174,10 +3902,10 @@ def mainwindow():
     for i in range(2, len(gphyapps) * 2, 2):
         if i / 2 < len(gphyapps):
             button = gphyapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=gphyappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=gphyappsdescs[i // 2],
-                                                pckg=gphyappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=gphyappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass64.xview_scroll(-1*(event.delta//120), "units"))
     # Game physics simulation apps
@@ -3185,7 +3913,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass65=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass65.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Game physics simulation apps
@@ -3197,10 +3925,10 @@ def mainwindow():
     for i in range(2, len(gphysimapps) * 2, 2):
         if i / 2 < len(gphysimapps):
             button = gphysimapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=gphysimappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=gphysimappsdescs[i // 2],
-                                                pckg=gphysimappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=gphysimappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass65.xview_scroll(-1*(event.delta//120), "units"))
     # Game Scriptwriting and Story development apps
@@ -3208,7 +3936,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass67=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass67.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Game Scriptwriting and Story development apps
@@ -3220,10 +3948,10 @@ def mainwindow():
     for i in range(2, len(gstoryapps) * 2, 2):
         if i / 2 < len(gstoryapps):
             button = gstoryapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=gstoryappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=gstoryappsdescs[i // 2],
-                                                pckg=gstoryappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=gstoryappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass67.xview_scroll(-1*(event.delta//120), "units"))
     # Game streaming and broadcasting apps
@@ -3231,7 +3959,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass69=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass69.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Game streaming and broadcasting apps
@@ -3243,10 +3971,10 @@ def mainwindow():
     for i in range(2, len(gstreamapps) * 2, 2):
         if i / 2 < len(gstreamapps):
             button = gstreamapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=gstreamappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=gstreamappsdescs[i // 2],
-                                                pckg=gstreamappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=gstreamappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass69.xview_scroll(-1*(event.delta//120), "units"))
     # Graphic design apps
@@ -3254,7 +3982,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass78=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass78.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Graphic design apps
@@ -3266,10 +3994,10 @@ def mainwindow():
     for i in range(2, len(graphicapps) * 2, 2):
         if i / 2 < len(graphicapps):
             button = graphicapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=graphicappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=graphicappsdescs[i // 2],
-                                                pckg=graphicappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=graphicappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass78.xview_scroll(-1*(event.delta//120), "units"))
     # Health and fitness apps
@@ -3277,7 +4005,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass79=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass79.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Health and fitness apps
@@ -3289,10 +4017,10 @@ def mainwindow():
     for i in range(2, len(healthapps) * 2, 2):
         if i / 2 < len(healthapps):
             button = healthapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=healthappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=healthappsdescs[i // 2],
-                                                pckg=healthappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=healthappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass79.xview_scroll(-1*(event.delta//120), "units"))
     # Human resource apps
@@ -3300,7 +4028,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass80=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass80.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Human resource apps
@@ -3312,10 +4040,10 @@ def mainwindow():
     for i in range(2, len(hrapps) * 2, 2):
         if i / 2 < len(hrapps):
             button = hrapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=hrappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=hrappsdescs[i // 2],
-                                                pckg=hrappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=hrappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass80.xview_scroll(-1*(event.delta//120), "units"))
     # Image editing and manipulation apps    
@@ -3323,7 +4051,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass81=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass81.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Image editing and manipulation apps     
@@ -3335,10 +4063,10 @@ def mainwindow():
     for i in range(2, len(imgeditapps) * 2, 2):
         if i / 2 < len(imgeditapps):
             button = imgeditapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=imgeditappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=imgeditappsdescs[i // 2],
-                                                pckg=imgeditappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=imgeditappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass81.xview_scroll(-1*(event.delta//120), "units"))
     # Ide's
@@ -3346,7 +4074,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass82=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass82.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Integrated development environments(IDE's)
@@ -3358,10 +4086,10 @@ def mainwindow():
     for i in range(2, len(ideapps) * 2, 2):
         if i / 2 < len(ideapps):
             button = ideapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=ideappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=ideappsdescs[i // 2],
-                                                pckg=ideappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=ideappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass82.xview_scroll(-1*(event.delta//120), "units"))
     # Inventory management apps
@@ -3369,7 +4097,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass83=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass83.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Inventory management apps
@@ -3381,10 +4109,10 @@ def mainwindow():
     for i in range(2, len(gnetworkapps) * 2, 2):
         if i / 2 < len(gnetworkapps):
             button = gnetworkapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=gnetworkappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=gnetworkappsdescs[i // 2],
-                                                pckg=gnetworkappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=gnetworkappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass83.xview_scroll(-1*(event.delta//120), "units"))
     
@@ -3393,7 +4121,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass84=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass84.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Language learning apps
@@ -3405,10 +4133,10 @@ def mainwindow():
     for i in range(2, len(langapps) * 2, 2):
         if i / 2 < len(langapps):
             button = langapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=langappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=langappsdescs[i // 2],
-                                                pckg=langappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=langappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass84.xview_scroll(-1*(event.delta//120), "units"))
     # Map and navigation apps
@@ -3416,7 +4144,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass85=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass85.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Map and navigation apps
@@ -3428,10 +4156,10 @@ def mainwindow():
     for i in range(2, len(mapapps) * 2, 2):
         if i / 2 < len(mapapps):
             button = mapapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=mapappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=mapappsdescs[i // 2],
-                                                pckg=mapappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=mapappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass85.xview_scroll(-1*(event.delta//120), "units"))
     # Mind and body apps
@@ -3439,7 +4167,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass86=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass86.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Mind and body apps
@@ -3451,10 +4179,10 @@ def mainwindow():
     for i in range(2, len(mindapps) * 2, 2):
         if i / 2 < len(mindapps):
             button = mindapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=mindappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=mindappsdescs[i // 2],
-                                                pckg=mindappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=mindappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass86.xview_scroll(-1*(event.delta//120), "units"))
     # Mind mapping and brainstorming apps
@@ -3462,7 +4190,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass87=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass87.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Mind mapping and brainstorming apps
@@ -3474,10 +4202,10 @@ def mainwindow():
     for i in range(2, len(mindmappingapps) * 2, 2):
         if i / 2 < len(mindmappingapps):
             button = mindmappingapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=mindmappingappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=mindmappingappsdescs[i // 2],
-                                                pckg=mindmappingappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=mindmappingappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass87.xview_scroll(-1*(event.delta//120), "units"))
 
@@ -3486,7 +4214,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass129=returns[1]
     for i in range(1, 12, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass129.xview_scroll(-1*(event.delta//120), "units"))
     spotify = ttk.Button(sectionframe, image=spotifyimage, text="Spotify\n★★★★☆ 4.5\n🌐 Winget", width=15,
@@ -3511,9 +4239,9 @@ def mainwindow():
     for i in range(2, len(multimedialists) * 2, 2):
         if i / 2 < len(multimedialists):
             button = multimedialists[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=multimediaimgs[i // 2], buttonname=button.cget('text'),
-                                             buttondesc=multimediadescs[i // 2], pckg=multimediapacknames[i // 2]:[remold(), hoverwindow(
+                                             buttondesc=multimediadescs[i // 2], pckg=multimediapacknames[i // 2]:[remold(), loadingscreen(
                 event, buttonimg, buttonname, buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass129.xview_scroll(-1*(event.delta//120), "units"))
 
@@ -3522,7 +4250,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass88=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass88.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Music streaming apps
@@ -3534,10 +4262,10 @@ def mainwindow():
     for i in range(2, len(musicapps) * 2, 2):
         if i / 2 < len(musicapps):
             button = musicapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=musicappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=musicappsdescs[i // 2],
-                                                pckg=musicappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=musicappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass88.xview_scroll(-1*(event.delta//120), "units"))
     # Network management and monitoring apps
@@ -3545,7 +4273,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass89=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass89.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Network management and monitoring apps
@@ -3557,10 +4285,10 @@ def mainwindow():
     for i in range(2, len(networkapps) * 2, 2):
         if i / 2 < len(networkapps):
             button = networkapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=networkappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=networkappsdescs[i // 2],
-                                                pckg=networkappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=networkappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass89.xview_scroll(-1*(event.delta//120), "units"))
     # News apps
@@ -3568,7 +4296,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass90=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass90.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all News apps
@@ -3580,10 +4308,10 @@ def mainwindow():
     for i in range(2, len(Newsapps) * 2, 2):
         if i / 2 < len(Newsapps):
             button = Newsapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=Newsappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=Newsappsdescs[i // 2],
-                                                pckg=Newsappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=Newsappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass90.xview_scroll(-1*(event.delta//120), "units"))
     # Office suite apps
@@ -3591,7 +4319,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass91=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass91.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Office suite apps
@@ -3603,10 +4331,10 @@ def mainwindow():
     for i in range(2, len(offsuiteapps) * 2, 2):
         if i / 2 < len(offsuiteapps):
             button = offsuiteapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=offsuiteappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=offsuiteappsdescs[i // 2],
-                                                pckg=offsuiteappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=offsuiteappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass91.xview_scroll(-1*(event.delta//120), "units"))
     # PDF readers and editors
@@ -3614,7 +4342,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass92=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass92.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all PDF readers and editors
@@ -3626,10 +4354,10 @@ def mainwindow():
     for i in range(2, len(pdfapps) * 2, 2):
         if i / 2 < len(pdfapps):
             button = pdfapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=pdfappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=pdfappsdescs[i // 2],
-                                                pckg=pdfappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=pdfappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass92.xview_scroll(-1*(event.delta//120), "units"))
     # Parental control apps
@@ -3637,7 +4365,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass93=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass93.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Parental control apps
@@ -3649,10 +4377,10 @@ def mainwindow():
     for i in range(2, len(parentapps) * 2, 2):
         if i / 2 < len(parentapps):
             button = parentapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=parentappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=parentappsdescs[i // 2],
-                                                pckg=parentappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=parentappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass93.xview_scroll(-1*(event.delta//120), "units"))
     # Password management apps
@@ -3660,7 +4388,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass94=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass94.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Password management apps
@@ -3672,10 +4400,10 @@ def mainwindow():
     for i in range(2, len(passmanapps) * 2, 2):
         if i / 2 < len(passmanapps):
             button = passmanapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=passmanappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=passmanappsdescs[i // 2],
-                                                pckg=passmanappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=passmanappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass94.xview_scroll(-1*(event.delta//120), "units"))
     # Payroll management apps
@@ -3683,7 +4411,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass95=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass95.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Payroll management apps
@@ -3695,10 +4423,10 @@ def mainwindow():
     for i in range(2, len(payrollapps) * 2, 2):
         if i / 2 < len(payrollapps):
             button = payrollapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=payrollappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=payrollappsdescs[i // 2],
-                                                pckg=payrollappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=payrollappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass95.xview_scroll(-1*(event.delta//120), "units"))
     # Personal organisation apps
@@ -3706,7 +4434,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass96=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass96.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Personal organisation apps
@@ -3718,10 +4446,10 @@ def mainwindow():
     for i in range(2, len(personalorgapps) * 2, 2):
         if i / 2 < len(personalorgapps):
             button = personalorgapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=personalorgappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=personalorgappsdescs[i // 2],
-                                                pckg=personalorgappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=personalorgappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass96.xview_scroll(-1*(event.delta//120), "units"))
     # Point-of-sale apps
@@ -3729,7 +4457,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass97=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass97.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Point-of-sale apps
@@ -3741,10 +4469,10 @@ def mainwindow():
     for i in range(2, len(posapps) * 2, 2):
         if i / 2 < len(posapps):
             button = posapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=posappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=posappsdescs[i // 2],
-                                                pckg=posappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=posappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass97.xview_scroll(-1*(event.delta//120), "units"))
     # Presentation and slide creation apps
@@ -3752,7 +4480,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass98=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass98.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Presentation and slide creation apps
@@ -3764,10 +4492,10 @@ def mainwindow():
     for i in range(2, len(presapps) * 2, 2):
         if i / 2 < len(presapps):
             button = presapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=presappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=presappsdescs[i // 2],
-                                                pckg=presappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=presappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass98.xview_scroll(-1*(event.delta//120), "units"))
     # Profiling apps
@@ -3775,7 +4503,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass100=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass100.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Profiling apps
@@ -3787,10 +4515,10 @@ def mainwindow():
     for i in range(2, len(Profilingapps) * 2, 2):
         if i / 2 < len(Profilingapps):
             button = Profilingapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=Profilingappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=Profilingappsdescs[i // 2],
-                                                pckg=Profilingappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=Profilingappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass100.xview_scroll(-1*(event.delta//120), "units"))
     # Programming and development apps
@@ -3798,7 +4526,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass101=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass101.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Programming and development apps
@@ -3810,10 +4538,10 @@ def mainwindow():
     for i in range(2, len(Programmingapps) * 2, 2):
         if i / 2 < len(Programmingapps):
             button = Programmingapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=Programmingappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=Programmingappsdescs[i // 2],
-                                                pckg=Programmingappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=Programmingappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass101.xview_scroll(-1*(event.delta//120), "units"))
     # Project management apps
@@ -3821,7 +4549,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass102=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass102.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Project management apps
@@ -3833,10 +4561,10 @@ def mainwindow():
     for i in range(2, len(Projectapps) * 2, 2):
         if i / 2 < len(Projectapps):
             button = Projectapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=Projectappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=Projectappsdescs[i // 2],
-                                                pckg=Projectappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=Projectappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass102.xview_scroll(-1*(event.delta//120), "units"))
     # Remote access apps
@@ -3844,7 +4572,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass103=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass103.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Remote access apps
@@ -3856,10 +4584,10 @@ def mainwindow():
     for i in range(2, len(remoteaccapps) * 2, 2):
         if i / 2 < len(remoteaccapps):
             button = remoteaccapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=remoteaccappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=remoteaccappsdescs[i // 2],
-                                                pckg=remoteaccappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=remoteaccappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass103.xview_scroll(-1*(event.delta//120), "units"))
     # Retail management apps
@@ -3867,7 +4595,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass104=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass104.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Retail management apps
@@ -3879,10 +4607,10 @@ def mainwindow():
     for i in range(2, len(Retailapps) * 2, 2):
         if i / 2 < len(Retailapps):
             button = Retailapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=Retailappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=Retailappsdescs[i // 2],
-                                                pckg=Retailappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=Retailappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass104.xview_scroll(-1*(event.delta//120), "units"))
     # SEO and analytics apps
@@ -3890,7 +4618,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass105=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass105.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all SEO and analytics apps
@@ -3902,10 +4630,10 @@ def mainwindow():
     for i in range(2, len(SEOapps) * 2, 2):
         if i / 2 < len(SEOapps):
             button = SEOapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=SEOappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=SEOappsdescs[i // 2],
-                                                pckg=SEOappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=SEOappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass105.xview_scroll(-1*(event.delta//120), "units"))
     # Screenshot and screen recording apps
@@ -3913,7 +4641,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass106=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass106.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Screenshot and screen recording apps
@@ -3925,10 +4653,10 @@ def mainwindow():
     for i in range(2, len(ssapps) * 2, 2):
         if i / 2 < len(ssapps):
             button = ssapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=ssappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=ssappsdescs[i // 2],
-                                                pckg=ssappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=ssappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass106.xview_scroll(-1*(event.delta//120), "units"))
     # Social media apps
@@ -3936,7 +4664,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass107=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass107.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Social media apps
@@ -3948,10 +4676,10 @@ def mainwindow():
     for i in range(2, len(Socialapps) * 2, 2):
         if i / 2 < len(Socialapps):
             button = Socialapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg= Socialappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=Socialappsdescs[i // 2],
-                                                pckg=Socialappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=Socialappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass107.xview_scroll(-1*(event.delta//120), "units"))
     # Supply chain management apps
@@ -3959,7 +4687,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass108=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass108.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Supply chain management apps
@@ -3971,10 +4699,10 @@ def mainwindow():
     for i in range(2, len(suppchainapps) * 2, 2):
         if i / 2 < len(suppchainapps):
             button = suppchainapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=suppchainappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=suppchainappsdescs[i // 2],
-                                                pckg=suppchainappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=suppchainappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass108.xview_scroll(-1*(event.delta//120), "units"))
     # System information and diagnostic tools
@@ -3982,7 +4710,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass109=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass109.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all System information and diagnostic tools
@@ -3994,10 +4722,10 @@ def mainwindow():
     for i in range(2, len(sysinfoapps) * 2, 2):
         if i / 2 < len(sysinfoapps):
             button = sysinfoapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=sysinfoappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=sysinfoappsdescs[i // 2],
-                                                pckg=sysinfoappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=sysinfoappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass109.xview_scroll(-1*(event.delta//120), "units"))
     # System Optimisation and performance apps
@@ -4005,7 +4733,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass110=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass110.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all System Optimisation and performance apps
@@ -4017,10 +4745,10 @@ def mainwindow():
     for i in range(2, len(sysperfapps) * 2, 2):
         if i / 2 < len(sysperfapps):
             button = sysperfapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=sysperfappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=sysperfappsdescs[i // 2],
-                                                pckg=sysperfappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=sysperfappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass110.xview_scroll(-1*(event.delta//120), "units"))
     # Tax preperation and filing apps
@@ -4028,7 +4756,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass111=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass111.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Tax preperation and filing apps
@@ -4040,10 +4768,10 @@ def mainwindow():
     for i in range(2, len(taxapps) * 2, 2):
         if i / 2 < len(taxapps):
             button = taxapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=taxappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=taxappsdescs[i // 2],
-                                                pckg=taxappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=taxappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass111.xview_scroll(-1*(event.delta//120), "units"))
     
@@ -4052,7 +4780,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass112=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass112.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Terminal emulators
@@ -4064,10 +4792,10 @@ def mainwindow():
     for i in range(2, len(terminalapps) * 2, 2):
         if i / 2 < len(terminalapps):
             button = terminalapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=terminalappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=terminalappsdescs[i // 2],
-                                                pckg=terminalappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=terminalappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass112.xview_scroll(-1*(event.delta//120), "units"))
     # Text editors
@@ -4075,7 +4803,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass113=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass113.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Text editors
@@ -4087,10 +4815,10 @@ def mainwindow():
     for i in range(2, len(Texteditapps) * 2, 2):
         if i / 2 < len(Texteditapps):
             button = Texteditapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=Texteditappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=Texteditappsdescs[i // 2],
-                                                pckg=Texteditappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=Texteditappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass113.xview_scroll(-1*(event.delta//120), "units"))
     # Time tracking and invoicing apps
@@ -4098,7 +4826,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass114=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass114.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Time tracking and invoicing apps
@@ -4110,10 +4838,10 @@ def mainwindow():
     for i in range(2, len(ttiapps) * 2, 2):
         if i / 2 < len(ttiapps):
             button = ttiapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=ttiappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=ttiappsdescs[i // 2],
-                                                pckg=ttiappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=ttiappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass114.xview_scroll(-1*(event.delta//120), "units"))
     # Travel apps
@@ -4121,7 +4849,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass115=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass115.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Travel apps
@@ -4133,10 +4861,10 @@ def mainwindow():
     for i in range(2, len(Travelapps) * 2, 2):
         if i / 2 < len(Travelapps):
             button = Travelapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=Travelappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=Travelappsdescs[i // 2],
-                                                pckg=Travelappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=Travelappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass115.xview_scroll(-1*(event.delta//120), "units"))
 
@@ -4146,7 +4874,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass130=returns[1]
     for i in range(1, 26, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass130.xview_scroll(-1*(event.delta//120), "units"))
     hwinfo = ttk.Button(sectionframe, image=hwinfoimage, text="HW Info\n★★★★☆ 4\n🌐 Winget", width=15, compound=LEFT)
@@ -4182,9 +4910,9 @@ def mainwindow():
     for i in range(2, len(utillists) * 2, 2):
         if i / 2 < len(utillists):
             button = utillists[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=utilimgs[i // 2], buttonname=button.cget('text'),
-                                             buttondesc=utildescs[i // 2], pckg=utilpacknames[i // 2]:[remold(), hoverwindow(
+                                             buttondesc=utildescs[i // 2], pckg=utilpacknames[i // 2]:[remold(), loadingscreen(
                 event, buttonimg, buttonname, buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass130.xview_scroll(-1*(event.delta//120), "units"))
 
@@ -4193,7 +4921,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass116=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass116.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all VPN apps
@@ -4205,10 +4933,10 @@ def mainwindow():
     for i in range(2, len(VPNapps) * 2, 2):
         if i / 2 < len(VPNapps):
             button = VPNapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=VPNappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=VPNappsdescs[i // 2],
-                                                pckg=VPNappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=VPNappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass116.xview_scroll(-1*(event.delta//120), "units"))
     # Video and audio compression apps
@@ -4216,7 +4944,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass117=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass117.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Video and audio compression apps
@@ -4228,10 +4956,10 @@ def mainwindow():
     for i in range(2, len(vacapps) * 2, 2):
         if i / 2 < len(vacapps):
             button = vacapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=vacappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=vacappsdescs[i // 2],
-                                                pckg=vacappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=vacappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass117.xview_scroll(-1*(event.delta//120), "units"))
     # Video editing apps
@@ -4239,7 +4967,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass118=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass118.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Video editing apps
@@ -4251,10 +4979,10 @@ def mainwindow():
     for i in range(2, len(veditapps) * 2, 2):
         if i / 2 < len(veditapps):
             button = veditapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=vacappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=veditappsdescs[i // 2],
-                                                pckg=veditappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=veditappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass118.xview_scroll(-1*(event.delta//120), "units"))
     # Video streaming apps
@@ -4262,7 +4990,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass119=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass119.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Video streaming apps
@@ -4274,10 +5002,10 @@ def mainwindow():
     for i in range(2, len(vstreamapps) * 2, 2):
         if i / 2 < len(vstreamapps):
             button = vstreamapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=vstreamappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=vstreamappsdescs[i // 2],
-                                                pckg=vstreamappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=vstreamappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass119.xview_scroll(-1*(event.delta//120), "units"))
     # Virtual and augmented reality apps
@@ -4285,7 +5013,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass120=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass120.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Virtual and augmented reality apps
@@ -4297,10 +5025,10 @@ def mainwindow():
     for i in range(2, len(virtapps) * 2, 2):
         if i / 2 < len(virtapps):
             button = virtapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=virtappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=virtappsdescs[i // 2],
-                                                pckg=virtappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=virtappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass120.xview_scroll(-1*(event.delta//120), "units"))
     # Virtual event and webinar apps
@@ -4308,7 +5036,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass121=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass121.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Virtual event and webinar apps
@@ -4320,10 +5048,10 @@ def mainwindow():
     for i in range(2, len(verteventapps) * 2, 2):
         if i / 2 < len(verteventapps):
             button = verteventapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=verteventappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=verteventappsdescs[i // 2],
-                                                pckg=verteventappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=verteventappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass121.xview_scroll(-1*(event.delta//120), "units"))
     # Virtual meeting and  conference apps
@@ -4331,7 +5059,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass122=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass122.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Virtual meeting and  conference apps
@@ -4343,10 +5071,10 @@ def mainwindow():
     for i in range(2, len(vertmeetingapps) * 2, 2):
         if i / 2 < len(vertmeetingapps):
             button = vertmeetingapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=vertmeetingappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=vertmeetingappsdescs[i // 2],
-                                                pckg=vertmeetingappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=vertmeetingappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass122.xview_scroll(-1*(event.delta//120), "units"))
     # Virtual reality content creation apps
@@ -4354,7 +5082,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass123=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass123.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Virtual reality content creation apps
@@ -4366,10 +5094,10 @@ def mainwindow():
     for i in range(2, len(vrcontentapps) * 2, 2):
         if i / 2 < len(vrcontentapps):
             button = vrcontentapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=vrcontentappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=vrcontentappsdescs[i // 2],
-                                                pckg=vrcontentappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=vrcontentappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass123.xview_scroll(-1*(event.delta//120), "units"))
     # Virtualization software
@@ -4377,7 +5105,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass124=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass124.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Virtualization software
@@ -4389,10 +5117,10 @@ def mainwindow():
     for i in range(2, len(Virtualizationapps) * 2, 2):
         if i / 2 < len(Virtualizationapps):
             button = Virtualizationapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=Virtualizationappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=Virtualizationappsdescs[i // 2],
-                                                pckg=Virtualizationappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=Virtualizationappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass124.xview_scroll(-1*(event.delta//120), "units"))
     # Voice recognition apps
@@ -4400,7 +5128,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass125=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass125.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Voice recognition apps
@@ -4412,10 +5140,10 @@ def mainwindow():
     for i in range(2, len(vrecapps) * 2, 2):
         if i / 2 < len(vrecapps):
             button = vrecapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=vrecappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=vrecappsdescs[i // 2],
-                                                pckg=vrecappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=vrecappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass125.xview_scroll(-1*(event.delta//120), "units"))
     # Weather apps
@@ -4423,7 +5151,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass126=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass126.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Weather apps
@@ -4435,10 +5163,10 @@ def mainwindow():
     for i in range(2, len(Weatherapps) * 2, 2):
         if i / 2 < len(Weatherapps):
             button = Weatherapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
             button.bind("<Button-1>", lambda event, buttonimg=Weatherappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=Weatherappsdescs[i // 2],
-                                                pckg=Weatherappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
+                                                pckg=Weatherappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass126.xview_scroll(-1*(event.delta//120), "units"))
     
@@ -4447,7 +5175,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass131=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass131.yview_scroll(-1*(event.delta//120), "units"))
 
@@ -4480,11 +5208,8 @@ def mainwindow():
     for i in range(2, len(browserlists) * 2, 2):
         if i / 2 < len(browserlists):
             button = browserlists[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
-            button.bind("<Button-1>", lambda event, buttonimg=browserimgs[i // 2], buttonname=button.cget('text'),
-                                             buttondesc=browserdescs[i // 2],
-                                             pckg=browserpacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
-                                                                                        buttondesc, pckg)])
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
+            button.bind("<Button-1>", lambda event, buttonimg=browserimgs[i // 2], buttonname=button.cget('text'), buttondesc=browserdescs[i // 2],pckg=browserpacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,buttondesc, pckg)])
             button.bind("<MouseWheel>", lambda event: canvass131.xview_scroll(-1*(event.delta//120), "units"))
         
     # Windows customisation software
@@ -4492,7 +5217,7 @@ def mainwindow():
     sectionframe= returns[0]
     canvass127=returns[1]
     for i in range(1, 18, 2):
-        spacing = ttk.Label(sectionframe, text="    ")
+        spacing = ttk.Label(sectionframe, text=" ", font=("calibri", 95))
         spacing.grid(row=0, column=i)
         spacing.bind("<MouseWheel>", lambda event: canvass127.xview_scroll(-1*(event.delta//120), "units"))
     # placements of all Windows customisation software
@@ -4504,16 +5229,14 @@ def mainwindow():
     for i in range(2, len(vcsapps) * 2, 2):
         if i / 2 < len(vcsapps):
             button = vcsapps[i // 2]
-            button.grid(row=0, column=i, ipady=40, ipadx=35)
-            button.bind("<Button-1>", lambda event, buttonimg=vcsappsimages[i // 2], buttonname=button.cget('text'),
-                                                buttondesc=vcsappsdescs[i // 2],
-                                                pckg=vcsappspacknames[i // 2]: [remold(),hoverwindow(event, buttonimg, buttonname,
-                                                                                        buttondesc, pckg)])
-            button.bind("<MouseWheel>", lambda event: canvass127.xview_scroll(-1*(event.delta//120), "units"))
-    
+            button.grid(row=0, column=i, ipady=40, ipadx=25)
+            button.bind("<Button-1>", lambda event, buttonimg=vcsappsimages[i // 2], buttonname=button.cget('text'),buttondesc=vcsappsdescs[i // 2],pckg=vcsappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname, buttondesc, pckg)])
+            button.bind("<MouseWheel>", lambda event: canvass127.xview_scroll(-1*(event.delta//120),"units"))
+
+    global allapps
+    allapps=[maya,blender,threedsmax,sketchup,wings3d,sweethome3d,freecad,openscad,makehuman,meshlab,opentoonz,fusion360,synfig,pencil2d,sketchupviewer,cura,prusaslicer,slic3r,meshmixer,POVRay,librecad,meshlab,opencv,visualsfm,meshroom,GnuCash,homebank,kmymoney,moneydance,audacity,oceanaudio,lmms,wavosaur,reaper,exactaudiocopy,simpleradiorecorder]
     # spacing for magic :}
-    spacing = ttk.Label(second_frame,
-                        text="                                                                                                              Packages at your service.                                                                                                                          ")
+    spacing = ttk.Label(second_frame,text="                                                                                                             Packages at your service.                                                                                                                         ")
     spacing.grid(row=150, column=0)
     spacing.bind("<MouseWheel>", lambda event: my_canvas.yview_scroll(-1*(event.delta//120), "units"))
     
