@@ -15,6 +15,7 @@ import ctypes
 import sys
 import threading
 import time
+import re
 
 def firsttimewindow():
     global firsttime
@@ -27,11 +28,7 @@ def firsttimewindow():
     x = (screenwidth / 2) - (app_width / 2)
     y = (screenheight / 2) - (app_height / 2)
     firsttime.geometry(f'{app_width}x{app_height}+{int(x)}+{int(y)}')
-    
-
     firsttime.mainloop()
-
-    
 
 def nointernetwindow(x):
     if x == "mainsplash":
@@ -80,8 +77,19 @@ def themecheck():
         global mode
         data = json.load(file)
         mode = data["mode"]
-        
+
+with open("settings.json", "r") as x:
+    data = json.load(x)
+    global autoupdateval
+    autoupdateval=data["autoupdate"]
+
 themecheck()
+global is_on
+if mode == "light":
+    is_on = True
+elif mode == "dark":
+    is_on = False
+
 mainsplash = Tk()
 sv.set_theme(mode)
 mainsplash.overrideredirect(True)
@@ -205,12 +213,38 @@ def returnm_size_on_hovering(event):
     if mode =="light":
         minimize_button['bg'] = '#fafafa'
 
+def is_admin():
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except:
+        return False
+                    
+def autoupdate():
+    if autoupdateval == 1:
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        x=subprocess.run(["winget", "upgrade"], capture_output=True, text=True,startupinfo=startupinfo, creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NO_WINDOW)
+        app_names = re.findall(r'^\s*(.+?)\s{2,}', x.stdout, flags=re.MULTILINE)
+        app_names = app_names[2:-1]
+        for i in app_names:
+            subprocess.run(["winget", "upgrade", i],stderr=subprocess.PIPE,startupinfo=startupinfo, creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NO_WINDOW)
+        if is_admin():
+            outdated_packages = subprocess.run(['choco', 'outdated'], capture_output=True, text=True).stdout.splitlines()
+            packages_to_update = [line.split('|')[0] for line in outdated_packages[3:-1]]
+            for i in packages_to_update:
+                if i != "":
+                    subprocess.run(["choco", "upgrade", i],stderr=subprocess.PIPE,startupinfo=startupinfo, creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NO_WINDOW)
+                else:
+                    pass
+        subprocess.run(f"scoop update",shell=True,startupinfo=startupinfo, creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NO_WINDOW)
+                
 def mainwindow():
     global close_button
     global expand_button
     global minimize_button
     global main
     main = Toplevel()
+    threading.Thread(target=autoupdate).start()
     main.tk.call('wm', 'iconphoto', main._w, ImageTk.PhotoImage(file='images\softhub.ico'))
     mainsplash.withdraw()
     screenwidth = main.winfo_screenwidth()
@@ -231,6 +265,11 @@ def mainwindow():
                              font=("calibri", 13), highlightthickness=0)
     title_bar_title = Label(title_bar, text="Softhub", bd=0, font=("helvetica", 14),
                             highlightthickness=0)
+
+    searchdark = PhotoImage(file=r"images\searchdark.png")
+    searchdark = searchdark.subsample(11,11)
+    searchlight = PhotoImage(file=r"images\searchlight.png")
+    searchlight = searchlight.subsample(11,11)
 
     # pack the widgets
     title_bar.pack(fill=X)
@@ -361,47 +400,58 @@ def mainwindow():
         label.pack(side=LEFT)
         title_bar_title.pack(side=LEFT, padx=10)
 
-        
+        sidebar2= Frame(instwin, height=28, relief='groove', bd=0.5, highlightthickness=0)
+        sidebar2.pack(side='top', fill='both')
+
+        status = ttk.Label(sidebar2, text="v.0.7.Alpha", font=("Segou UI variable", 10))
+        status.place(relx=0.92, rely=0.1)
+
+        quote = ttk.Label(sidebar2, text="Simplifying software management", font=("Segou UI variable", 10))
+        quote.place(relx=0.435, rely=0.1)
+
         headinglabel = ttk.Label(instwin,text="Installed Apps", font=("Segou UI variable", 20))
-        headinglabel.place(relx=0.45,rely=0.1)
+        headinglabel.place(relx=0.45,rely=0.15)
 
         on = PhotoImage(file=r"images\darkicon.png")
-        on = on.subsample(4, 4)
+        on = on.subsample(5, 5)
         off = PhotoImage(file=r"images\lighticon.png")
-        off = off.subsample(4, 4)
+        off = off.subsample(5, 5)
 
-        global is_on
-        is_on = True
 
         def switch():
             global is_on
+            global mode
             if is_on == True:
-                theme.config(image=on)
                 is_on = False
                 mode = "dark"
                 with open("theme.json", "w") as file:
                     data = {"mode": mode}
                     json.dump(data, file)
                 sv.set_theme("dark")
+                theme.config(image=on)
+                searchbutton.config(image=searchdark)
                 label.update()
 
             else:
-                theme.config(image=off)
                 is_on = True
                 mode = "light"
                 with open("theme.json", "w") as file:
                     data = {"mode": mode}
                     json.dump(data, file)
                 sv.set_theme("light")
+                theme.config(image=off)
+                searchbutton.config(image=searchlight)
                 label.update()
 
 
         theme = ttk.Button(title_bar, image=on, padding=0,command=lambda: switch())
-        theme.place(relx=0.78, rely=0.075)
+        theme.place(relx=0.79, rely=0.125)
+
         if mode == "light":
             theme.config(image=off)
         elif mode == "dark":
             theme.config(image=on)
+    
         
         def openlink():
             webbrowser.open_new("https://github.com/ACExSWAROOP")
@@ -412,7 +462,7 @@ def mainwindow():
         aboutbutton.place(relx=0.1, rely=0.15)
 
         settingsicon= PhotoImage(file=r"images\settings.png")
-        settingsicon = settingsicon.subsample(16, 16)
+        settingsicon = settingsicon.subsample(18, 18)
         settingsbutton = ttk.Button(title_bar, image=settingsicon, padding=0, command=lambda: settingswindow())
         settingsbutton.place(relx=0.84, rely=0.075)
 
@@ -456,9 +506,9 @@ def mainwindow():
         allapps=checkallpack()
 
         if window == "Updwindow":
-            loadapps.after(3000,lambda: Updwindow())
+            loadapps.after(2000,lambda: Updwindow())
         elif window == "instwindow":
-            loadapps.after(3000,lambda: instwindow())
+            loadapps.after(2000,lambda: instwindow())
             
         loadapps.mainloop()
 
@@ -568,21 +618,29 @@ def mainwindow():
         label.pack(side=LEFT)
         title_bar_title.pack(side=LEFT, padx=10)
 
+        sidebar2= Frame(updwin, height=28, relief='groove', bd=0.5, highlightthickness=0)
+        sidebar2.pack(side='top', fill='both')
+
+        status = ttk.Label(sidebar2, text="v.0.7.Alpha", font=("Segou UI variable", 10))
+        status.place(relx=0.92, rely=0.1)
+
+        quote = ttk.Label(sidebar2, text="Simplifying software management", font=("Segou UI variable", 10))
+        quote.place(relx=0.435, rely=0.1)
+
         headinglabel = ttk.Label(updwin,text="Update Apps", font=("Segou UI variable", 20))
-        headinglabel.place(relx=0.45,rely=0.1)
+        headinglabel.place(relx=0.45,rely=0.15)
 
         on = PhotoImage(file=r"images\darkicon.png")
-        on = on.subsample(4, 4)
+        on = on.subsample(5, 5)
         off = PhotoImage(file=r"images\lighticon.png")
-        off = off.subsample(4, 4)
-
-        global is_on
-        is_on = True
-
+        off = off.subsample(5, 5)
+        
         def switch():
             global is_on
+            global mode
             if is_on == True:
                 theme.config(image=on)
+                searchbutton.config(image=searchdark)
                 is_on = False
                 mode = "dark"
                 with open("theme.json", "w") as file:
@@ -593,6 +651,7 @@ def mainwindow():
 
             else:
                 theme.config(image=off)
+                searchbutton.config(image=searchlight)
                 is_on = True
                 mode = "light"
                 with open("theme.json", "w") as file:
@@ -603,7 +662,8 @@ def mainwindow():
 
 
         theme = ttk.Button(title_bar, image=on, padding=0,command=lambda: switch())
-        theme.place(relx=0.78, rely=0.075)
+        theme.place(relx=0.79, rely=0.125)
+
         if mode == "light":
             theme.config(image=off)
         elif mode == "dark":
@@ -618,7 +678,7 @@ def mainwindow():
         aboutbutton.place(relx=0.1, rely=0.15)
 
         settingsicon= PhotoImage(file=r"images\settings.png")
-        settingsicon = settingsicon.subsample(16, 16)
+        settingsicon = settingsicon.subsample(18, 18)
         settingsbutton = ttk.Button(title_bar, image=settingsicon, padding=0, command=lambda: settingswindow())
         settingsbutton.place(relx=0.84, rely=0.075)
         
@@ -724,6 +784,8 @@ def mainwindow():
             with open("settings.json", "w") as json_file:
                 json.dump(checkvalues, json_file)
 
+    
+
         pref =ttk.Label(settings,text="Preferences", font=("Segou UI variable", 20))
         
         chocolateyallow = ttk.Checkbutton(settings,text="Enable Chocolatey", variable=choco)
@@ -732,7 +794,7 @@ def mainwindow():
         urlallow = ttk.Checkbutton(settings,text="Enable URL downloads", variable=url)
         atupdate = ttk.Checkbutton(settings,text="Enable Auto Update", variable=autoupd)
         
-        savebutton= ttk.Button(settings,text="Save",width=15,command=lambda: saveconfig())
+        savebutton= ttk.Button(settings,text="Save",width=15,command=lambda: [saveconfig(),settings.destroy(),main.attributes("-alpha", 1)])
         pref.place(relx=0.4,rely=0.15)
         chocolateyallow.place(relx=0.1,rely=0.3)
         scoopallow.place(relx=0.1,rely=0.4)
@@ -974,7 +1036,7 @@ def mainwindow():
     categorylabel=ttk.Label(sidebar2,text="Categories", font=("Segou UI variable", 12),borderwidth=2)
     categorylabel.place(relx=0.065,rely=0.10)
 
-    status = ttk.Label(sidebar2, text="v.0.6.Alpha", font=("Segou UI variable", 10))
+    status = ttk.Label(sidebar2, text="v.0.7.Alpha", font=("Segou UI variable", 10))
     status.place(relx=0.92, rely=0.1)
 
     quote = ttk.Label(sidebar2, text="Simplifying software management", font=("Segou UI variable", 10))
@@ -991,24 +1053,39 @@ def mainwindow():
 
     searchval= StringVar()
 
+    def searchclick(event):
+        if searchbar.get() == "Search:-":
+            searchbar.delete(0, END)
+        
+    def searchempty(event):
+        if searchbar.get() == "":
+            searchbar.insert(0, "Search:-")
+
     searchbar=ttk.Entry(sidebar3,textvariable=searchval,width=25)
     searchbar.place(relx=0.15,rely=0.15) 
+    searchbar.insert(0, "Search:-")
+    searchbar.bind('<FocusIn>', searchclick)
+    searchbar.bind('<FocusOut>', searchempty)
+
 
     def checkappexists():
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         search=searchval.get()
         foundin=[0,0,0]
         global wingetresult
         global chocoresult
         global scoopresult
         try:
-            wingetresult=str(subprocess.run(["winget", "show", search], stderr=subprocess.PIPE))
+            wingetresult=str(subprocess.run(["winget", "show", search], stderr=subprocess.PIPE,startupinfo=startupinfo, creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NO_WINDOW))
+
             foundin[0]=1
             if wingetresult=="No package found matching input criteria.":
                 foundin[0]=0
         except subprocess.CalledProcessError:
             foundin[0]=0
         try:
-            chocoresult=subprocess.check_output(['choco', 'search', '--exact', search], stderr=subprocess.PIPE)
+            chocoresult=subprocess.check_output(['choco', 'search', '--exact', search], stderr=subprocess.PIPE,startupinfo=startupinfo, creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NO_WINDOW)
             foundin[1]=1
             chocoresult=str(chocoresult).split("\\r\\n")
             if chocoresult[1] == '0 packages found.':
@@ -1016,10 +1093,15 @@ def mainwindow():
         except subprocess.CalledProcessError:
             foundin[1]=0
         try:
-            scoopresult=subprocess.check_output(f"scoop search {search}",shell=True)
+            scoopresult=subprocess.check_output(f"scoop search {search}",shell=True ,stderr=subprocess.PIPE,startupinfo=startupinfo, creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NO_WINDOW)
             foundin[2]=1
+            scoopresult=str(scoopresult).split("\\r\\n")
+            if scoopresult[0] == "b'WARN  No matches found.":
+                foundin[2]=0
+            elif scoopresult[1] == "Please try again later or configure your API token using 'scoop config gh_token <your token>'.":
+                foundin[2]=0
         except subprocess.CalledProcessError:
-            foundin[3]=0
+            foundin[2]=0
 
         if foundin == [0,0,0]:
             displaysearchinfo.config(text="App not Found")
@@ -1046,18 +1128,19 @@ def mainwindow():
         apps=[]
 
     def wininstall():
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         try:
             clr()
             intcheckapp("main")
             start = wingetresult.index("['")
             end = wingetresult.index("']")
             result = wingetresult[start+2:end].split("', '")
-            result = str(subprocess.run(result, capture_output=True))
+            result = str(subprocess.run(result, capture_output=True, startupinfo=startupinfo, creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NO_WINDOW))
             start = result.index("Name")
             end = result.index("stderr=b'')")
             result = result[start:end]
             result = result.strip().split("\\r\\n")
-            print(result)
             global apps
             for line in result[2:]:
                 items = line.split()
@@ -1077,26 +1160,49 @@ def mainwindow():
                     app_id = items[7]
                 apps.append(app_id)
             apps.pop()
-            selectinstall()
+            selectinstall("winget")
         except NameError:
             pass
         
     def choinstall():
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         try:
             search=searchval.get()
             intcheckapp("main")
-
-            print(chocoresult)
-            subprocess.run(f"choco install {search} -y", shell=True)
+            result = subprocess.run(f"choco search {search} -exact", stdout=subprocess.PIPE, stderr=subprocess.PIPE,startupinfo=startupinfo, creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NO_WINDOW)
+            output = result.stdout.decode("utf-8")
+            output = output.split("\n")
+            result = output[1:-1]
+            for line in result:
+                result = line.strip().split(" ")
+                apps.append([result[0],result[1]])
+            apps.pop()
+            selectinstall("choco")
         except NameError:
             pass
 
     def scooinstall():
-        search=searchval.get()
-        intcheckapp("main")
-        subprocess.run(f"scoop bucket add {search}", shell=True)
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        try:
+            search=searchval.get()
+            intcheckapp("main")
+            result = subprocess.run(f"scoop search {search}",shell=True ,capture_output=True,startupinfo=startupinfo, creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NO_WINDOW)
+            output= str(result.stdout)  
+            output = output.split("\\r\\n")
+            result=output[4:-2]
+            for line in result:
+                result = line.strip().split(" ")
+                result = [x for x in result if x != '']
+                apps.append([result[0],result[1]])
+            selectinstall("scoop")
+        except NameError:
+                pass
     
-    def selectinstall():
+    def selectinstall(packman):
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         selinst = Toplevel()
         selinst.overrideredirect(True)
         app_width = 512
@@ -1110,34 +1216,74 @@ def mainwindow():
         selinst.bind("<Button-3>", lambda e:[selinst.destroy(),clr()])
         main.bind("<Button-1>", lambda e:[selinst.destroy(),clr()])
 
-      
+        sec = Frame(selinst)
+        sec.pack(fill=X, side=BOTTOM )
+
+        my_canvas = Canvas(selinst)
+        my_canvas.pack(side=LEFT, fill=BOTH, expand=1)
+
+        y_scrollbar = ttk.Scrollbar(selinst, orient=VERTICAL, command=my_canvas.yview)
+        y_scrollbar.pack(side=RIGHT, fill=Y)
+
+        my_canvas.configure(yscrollcommand=y_scrollbar.set)
+        my_canvas.bind("<Configure>", lambda e: my_canvas.config(scrollregion=my_canvas.bbox(ALL)))
+        
+        second_frame = Frame(my_canvas)
+        my_canvas.create_window((0, 0), window=second_frame, anchor="nw")
+        second_frame.bind("<MouseWheel>", lambda event: my_canvas.yview_scroll(-1*(event.delta//120), "units"))
+        selinst.bind("<MouseWheel>", lambda event: my_canvas.yview_scroll(-1*(event.delta//120), "units"))
+        sec.bind("<MouseWheel>", lambda event: my_canvas.yview_scroll(-1*(event.delta//120), "units"))
+        
         def on_select():
             selected = [apps[index] for index in range(len(apps)) if vars[index].get() == 1]
             print(selected)
-            subprocess.run(["winget", "install", "--id", selected[0]],stderr=subprocess.PIPE)
+            if packman == "winget":
+                subprocess.run(["winget", "install", "--id", selected[0]],stderr=subprocess.PIPE,startupinfo=startupinfo, creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NO_WINDOW)
+            elif packman == "choco":
+                subprocess.run(["choco", "install", "--id", selected[0][0]],stderr=subprocess.PIPE,startupinfo=startupinfo, creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NO_WINDOW)
+            elif packman =="scoop":
+                subprocess.run(f"scoop install {selected[0][0]}",shell=True,startupinfo=startupinfo, creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NO_WINDOW)
 
+        spacing = ttk.Label(second_frame, text="               ", font=("calibri", 35))
+        spacing.grid(row=0, column=0)
+        
+        applabel=ttk.Label(second_frame,text="choose an App ID to install:-")
+        applabel.grid(row=1,column=1)
+        
         vars = []
         for index, app_id in enumerate(apps):
             var = IntVar()
-            checkbox = ttk.Checkbutton(selinst, text=app_id, variable=var)
-            checkbox.pack()
+            checkbox = ttk.Checkbutton(second_frame, text=app_id, variable=var)
+            checkbox.grid(row=index+2,column=1)
+            checkbox.bind("<MouseWheel>", lambda event: my_canvas.yview_scroll(-1*(event.delta//120), "units"))
             vars.append(var)
 
-        select_button = ttk.Button(selinst, text="Install", command=lambda: threading.Thread(target=on_select).start())
-        select_button.pack()
+        select_button = ttk.Button(second_frame, text="Install", command=lambda: threading.Thread(target=on_select).start())
+        if packman == "winget":
+            select_button.grid(row=len(app_id)+2,column=1)
+        if packman == "choco":
+            select_button.grid(row=len(app_id)+2,column=1)
+        elif packman == "scoop":
+            select_button.grid(row=len(app_id)+1,column=1)
 
+        spacing = ttk.Label(second_frame, text="               ", font=("calibri", 35))
+        spacing.grid(row=len(app_id)+3, column=1)
+        spacing.bind("<MouseWheel>", lambda event: my_canvas.yview_scroll(-1*(event.delta//120), "units"))
         selinst.mainloop()
 
     def chekingmsg():
-        displaysearchinfo.config(text="Checking for apps ◯")
-
-    searchicon=PhotoImage(file=r"images\search.png")
-    searchimage = searchicon.subsample(12,12)
-    searchbutton =ttk.Button(sidebar3,image=searchimage,padding=0,command=lambda:[chekingmsg(),threading.Thread(target=checkappexists).start()])
-    searchbutton.place(relx=0.32,rely=0.15)
+        displaysearchinfo.config(text="Retrieving apps, This might take time depending on the server...")
     
-    displaysearchinfo= ttk.Label(sidebar3, text="", font=("Segou UI variable", 13))
-    displaysearchinfo.place(relx=0.37,rely=0.25) 
+    global searchbutton
+    searchbutton =ttk.Button(sidebar3,image=searchdark,padding=0,command=lambda:[chekingmsg(),threading.Thread(target=checkappexists).start()])
+    searchbutton.place(relx=0.33,rely=0.15)
+    if mode == "light":
+        searchbutton.config(image=searchlight)
+    elif mode == "dark":
+        searchbutton.config(image=searchdark)
+    
+    displaysearchinfo= ttk.Label(sidebar3, text="", font=("Segou UI variable", 11))
+    displaysearchinfo.place(relx=0.37,rely=0.31) 
 
     wingetbutton=ttk.Button(sidebar3,text="Winget",command=lambda:wininstall())
     chocobutton=ttk.Button(sidebar3,text="Chocolatey",command=lambda:choinstall())
@@ -1161,17 +1307,16 @@ def mainwindow():
     listbox.config(font=font)
 
     on = PhotoImage(file=r"images\darkicon.png")
-    on = on.subsample(4, 4)
+    on = on.subsample(5, 5)
     off = PhotoImage(file=r"images\lighticon.png")
-    off = off.subsample(4, 4)
-
-    global is_on
-    is_on = True
+    off = off.subsample(5, 5)
 
     def switch():
         global is_on
+        global mode
         if is_on == True:
             theme.config(image=on)
+            searchbutton.config(image=searchdark)
             is_on = False
             mode = "dark"
             with open("theme.json", "w") as file:
@@ -1182,6 +1327,7 @@ def mainwindow():
 
         else:
             theme.config(image=off)
+            searchbutton.config(image=searchlight)
             is_on = True
             mode = "light"
             with open("theme.json", "w") as file:
@@ -1192,7 +1338,8 @@ def mainwindow():
 
 
     theme = ttk.Button(title_bar, image=on, padding=0,command=lambda: switch())
-    theme.place(relx=0.78, rely=0.075)
+    theme.place(relx=0.79, rely=0.125)
+
     if mode == "light":
         theme.config(image=off)
     elif mode == "dark":
@@ -1207,7 +1354,7 @@ def mainwindow():
     aboutbutton.place(relx=0.1, rely=0.15)
 
     settingsicon= PhotoImage(file=r"images\settings.png")
-    settingsicon = settingsicon.subsample(16, 16)
+    settingsicon = settingsicon.subsample(18, 18)
     settingsbutton = ttk.Button(title_bar, image=settingsicon, padding=0, command=lambda: settingswindow())
     settingsbutton.place(relx=0.84, rely=0.075)
     settingsbutton.bind("<MouseWheel>", lambda event: my_canvas.yview_scroll(-1*(event.delta//120), "units"))
@@ -2475,7 +2622,23 @@ def mainwindow():
     easeustodoimage = easeustodoicon.subsample(5, 5)
     easeustododesc = "EaseUS Todo Backup Home covers all backup types: individual files and folders, \nwhole drives or partitions, or a full system backup. What's more, It supports to 'restore system to dissimilar \nhardware', which is an efficient way for you to migrate the current system to dissimilar \nhardware with all necessities saved on the system partition."
     easeustodopack = "EaseUS.TodoBackup"
+    #macriumreflectfree
+    macriumreflectfreeicon = PhotoImage(file=r"images\808-8089864_macrium-reflect-icon.png")
+    macriumreflectfreeimage = macriumreflectfreeicon.subsample(8, 8)
+    macriumreflectfreedesc = "Free backup, disk imaging and cloning solution for commercial and personal use."
+    macriumreflectfreepack = "reflect-free"
+    #aomeibackupper
+    aomeibackuppericon = PhotoImage(file=r"images\LOGO1.png")
+    aomeibackupperimage = aomeibackuppericon.subsample(8, 8)
+    aomeibackupperdesc = "AOMEI Backupper Standard is a free backup software designed for Windows PC. \nYou can protect all data on computer via system backup, file backup, file sync, etc. As disaster recovery solution,\n this software will help you restore Windows and files after disaster ASAP."
+    aomeibackupperpack = "backupper-standard"
+    #cobian
+    cobianicon = PhotoImage(file=r"images\cobian-backup.11.2.0.582001.png")
+    cobianimage = cobianicon.subsample(3, 3)
+    cobiandesc = "Cobian Backup is a multi-threaded program that can be used to schedule and backup your \nfiles and directories from their original location to other directories/drives in the same computer or \nother computer in your network. FTP backup is also supported in both directions (download and upload)."
+    cobianpack = "cobian-backup"
 
+    
 
     
     #################################################################################################################
@@ -2702,12 +2865,14 @@ def mainwindow():
         spacing.bind("<MouseWheel>", lambda event: canvass8.xview_scroll(-1*(event.delta//120), "units"))
     
     easeustodo = ttk.Button(sectionframe, image=easeustodoimage, text="Ease US To Do Backup\n★★★★☆ 4.2\n🌐 Winget", width=15, compound=LEFT)
-    
+    macriumreflectfree = ttk.Button(sectionframe, image=macriumreflectfreeimage, text="Macrium Reflect\n★★★★☆ 4.2\n🌐 Chocolatey", width=15, compound=LEFT)
+    aomeibackupper= ttk.Button(sectionframe, image=aomeibackupperimage, text="AOMEI Backupper\n★★★★☆ 4.2\n🌐 Chocolatey", width=15, compound=LEFT)
+    cobian = ttk.Button(sectionframe, image=cobianimage, text="Cobian Backup\n★★★★☆ 4.2\n🌐 Chocolatey", width=15, compound=LEFT)
     # placements of all Backup and recovery apps
-    barapps = ["dummy",easeustodo]
-    barappsimages = ["dummy",easeustodoimage]
-    barappsdescs = ["dummy",easeustododesc]
-    barappspacknames = ["dummy",easeustodopack]
+    barapps = ["dummy",easeustodo,macriumreflectfree,aomeibackupper,cobian]
+    barappsimages = ["dummy",easeustodoimage,macriumreflectfreeimage,aomeibackupperimage,cobianimage]
+    barappsdescs = ["dummy",easeustododesc,macriumreflectfreedesc,aomeibackupperdesc,cobiandesc]
+    barappspacknames = ["dummy",easeustodopack,macriumreflectfreepack,aomeibackupperpack,cobianpack]
 
     for i in range(2, len(barapps) * 2, 2):
         if i / 2 < len(barapps):
@@ -2854,7 +3019,7 @@ def mainwindow():
     telegram = ttk.Button(sectionframe, image=telegramimage, text="Telegram\n★★★☆☆ 3.5\n🌐 Winget", width=15,
                           compound=LEFT)
     viber = ttk.Button(sectionframe, image=viberimage, text="Viber\n★★★★☆ 4.5\n🌐 Winget", width=15, compound=LEFT)
-    whatsapp = ttk.Button(sectionframe, image=whatsappimage, text="Whatsapp Web\n★★★★☆ 4\n🌐 Winget", width=15,
+    whatsapp = ttk.Button(sectionframe, image=whatsappimage, text="Whatsapp Web\n★★★★☆ 4.3\n🌐 Winget", width=15,
                           compound=LEFT)
     signal = ttk.Button(sectionframe, image=signalimage, text="Signal\n★★★★☆ 4.5\n🌐 Winget", width=15, compound=LEFT)
     messenger = ttk.Button(sectionframe, image=messengerimage, text="Messenger\n★★★★☆ 4.8\n🌐 Winget", width=15,
@@ -4980,7 +5145,7 @@ def mainwindow():
         if i / 2 < len(veditapps):
             button = veditapps[i // 2]
             button.grid(row=0, column=i, ipady=40, ipadx=25)
-            button.bind("<Button-1>", lambda event, buttonimg=vacappsimages[i // 2], buttonname=button.cget('text'),
+            button.bind("<Button-1>", lambda event, buttonimg=veditappsimages[i // 2], buttonname=button.cget('text'),
                                                 buttondesc=veditappsdescs[i // 2],
                                                 pckg=veditappspacknames[i // 2]: [remold(),loadingscreen(event, buttonimg, buttonname,
                                                                                         buttondesc, pckg)])
@@ -5244,3 +5409,4 @@ def mainwindow():
 
 mainsplash.after(3000, mainwindow)
 mainsplash.mainloop()
+
